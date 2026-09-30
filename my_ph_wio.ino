@@ -21,15 +21,24 @@
 
 #include <Seeed_Arduino_FS.h>
 #include <TFT_eSPI.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 
 // ---------------------- Hardware Pin Definitions ----------------------
 const int PH_PIN = A0;             // สัญญาณ Po เข้าขา A0 (BCM27)
-const int TEMP_PIN = A1;           // ขาอ่านเซ็นเซอร์อุณหภูมิจากหัววัด 3-in-1 Combination Probe (NTC 10K / Pt1000)
+const int TEMP_PIN = A1;           // ขาอ่านเซ็นเซอร์อุณหภูมิ (รองรับทั้ง DS18B20 1-Wire และ NTC 10K) (BCM22)
 const float VREF = 3.30;           // แรงดันอ้างอิง ADC ของ ATSAMD51 = 3.30V
 const int ADC_MAX_VAL = 4095;      // 12-bit ADC (0 - 4095)
 const int NUM_SAMPLES = 30;        // ตัวอย่างสำหรับการกรอง Median / Trimmed Filter
 
-bool isAutoTempActive = false;     // ตรวจพบเซ็นเซอร์อุณหภูมิ 3-in-1 อัตโนมัติ (ATC) หรือไม่
+// อินสแตนซ์สำหรับอ่านโพรบวัดอุณหภูมิดิจิทัล DS18B20 (Waterproof Stainless Probe)
+OneWire oneWire(TEMP_PIN);
+DallasTemperature dsSensors(&oneWire);
+bool ds18b20Detected = false;
+unsigned long lastDSReadTime = 0;
+float cachedDSTemp = -999.0f;
+
+bool isAutoTempActive = false;     // ตรวจพบเซ็นเซอร์อุณหภูมิ 3-in-1 หรือ DS18B20 อัตโนมัติ (ATC) หรือไม่
 float lastSignalNoise = 0.005f;    // สัญญาณรบกวน (Jitter / Noise) สำหรับคำนวณความเชื่อมั่น AI
 float currentConfidence = 98.6f;   // ค่าความเชื่อมั่นแบบเรียลไทม์ (%)
 
@@ -260,9 +269,30 @@ float readFilteredVoltage() {
   return (avgRaw * VREF) / ADC_MAX_VAL;
 }
 
-// ---------------------- ระบบอ่านอุณหภูมิจากหัววัด 3-in-1 (ATC Engine) ---------
+// ---------------------- ระบบอ่านอุณหภูมิอัจฉริยะ (DS18B20 1-Wire & NTC ATC Engine) ---------
 float read3in1Temperature() {
-  // ทำการคายประจุ residual voltage บนขา A1 สั้นๆ เพื่อป้องกันพินลอย (Floating crosstalk)
+  unsigned long now = millis();
+
+  // 1. ตรวจสอบและอ่านจากเซ็นเซอร์ดิจิทัล DS18B20 ทุกๆ 800ms (Non-blocking)
+  if (now - lastDSReadTime >= 800) {
+    lastDSReadTime = now;
+    float t = dsSensors.getTempCByIndex(0);
+    dsSensors.requestTemperatures(); // ส่งคำสั่งแปลงค่าล่วงหน้าสำหรับรอบถัดไป
+    if (t > -20.0f && t < 75.0f && t != DEVICE_DISCONNECTED_C) {
+      ds18b20Detected = true;
+      cachedDSTemp = t;
+    } else {
+      ds18b20Detected = false;
+    }
+  }
+
+  // หากตรวจพบและอ่านค่าจาก DS18B20 ได้สำเร็จ ให้ใช้ค่าดิจิทัลนี้ทันที
+  if (ds18b20Detected && cachedDSTemp > -20.0f && cachedDSTemp < 75.0f) {
+    isAutoTempActive = true;
+    return cachedDSTemp;
+  }
+
+  // 2. หากไม่ใช่ DS18B20 ให้ตรวจสอบว่ามีการต่อหัววัดแบบ Analog NTC 10K หรือไม่
   pinMode(TEMP_PIN, OUTPUT);
   digitalWrite(TEMP_PIN, LOW);
   delayMicroseconds(20);
@@ -276,7 +306,7 @@ float read3in1Temperature() {
   }
   raw /= 10;
 
-  // หากไม่มีการต่อหัววัด 3-in-1 ขา A1 จะถูกพูลดาวน์อยู่ที่ 0V (raw < 500)
+  // หากไม่มีการต่อหัววัดใดๆ ขา A1 จะถูกพูลดาวน์อยู่ที่ 0V
   if (raw < 800 || raw > 3600) {
     isAutoTempActive = false;
     return testTempC; // ใช้ค่า MTC ที่ผู้ใช้ปรับด้วยจอยสติ๊ก (เช่น 25.0 C)
@@ -1075,7 +1105,10 @@ void setup() {
 
   analogReadResolution(12);
   pinMode(PH_PIN, INPUT);
-  pinMode(TEMP_PIN, INPUT_PULLDOWN); // สำหรับหัววัดอุณหภูมิ 3-in-1 Combination Probe (ป้องกันพินลอยเมื่อไม่ได้เสียบ)
+  pinMode(TEMP_PIN, INPUT_PULLUP); // เปิด Internal Pull-up ช่วยเซนเซอร์ 1-Wire DS18B20
+  dsSensors.begin();
+  dsSensors.setWaitForConversion(false); // Non-blocking ไม่ให้ดีเลย์หน้าจอ
+  dsSensors.requestTemperatures();
 
   pinMode(WIO_5S_UP, INPUT_PULLUP);
   pinMode(WIO_5S_DOWN, INPUT_PULLUP);
