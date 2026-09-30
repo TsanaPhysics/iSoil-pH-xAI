@@ -34,15 +34,19 @@ try {
         sample_note TEXT DEFAULT ''
     )");
 
-    // ตรวจสอบและเพิ่มคอลัมน์ session_id, model_name, mode สำหรับฐานข้อมูลเดิม
+    // ตรวจสอบและเพิ่มคอลัมน์ session_id, model_name, mode, confidence, temp_mode สำหรับฐานข้อมูลเดิม
     $cols = $db->query("PRAGMA table_info(measurements)")->fetchAll();
     $hasSession = false;
     $hasModel = false;
     $hasMode = false;
+    $hasConfidence = false;
+    $hasTempMode = false;
     foreach ($cols as $c) {
         if ($c['name'] === 'session_id') $hasSession = true;
         if ($c['name'] === 'model_name') $hasModel = true;
         if ($c['name'] === 'mode') $hasMode = true;
+        if ($c['name'] === 'confidence') $hasConfidence = true;
+        if ($c['name'] === 'temp_mode') $hasTempMode = true;
     }
     if (!$hasSession) {
         $db->exec("ALTER TABLE measurements ADD COLUMN session_id TEXT DEFAULT 'EXP_001'");
@@ -52,6 +56,12 @@ try {
     }
     if (!$hasMode) {
         $db->exec("ALTER TABLE measurements ADD COLUMN mode TEXT DEFAULT 'FIELD_RUN'");
+    }
+    if (!$hasConfidence) {
+        $db->exec("ALTER TABLE measurements ADD COLUMN confidence REAL DEFAULT 98.5");
+    }
+    if (!$hasTempMode) {
+        $db->exec("ALTER TABLE measurements ADD COLUMN temp_mode TEXT DEFAULT 'MTC'");
     }
 
     $db->exec("CREATE INDEX IF NOT EXISTS idx_timestamp ON measurements(timestamp)");

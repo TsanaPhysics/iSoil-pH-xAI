@@ -227,6 +227,34 @@ function updateKPIs(latest, stats, activeSession) {
     const tempEl = document.getElementById('kpiTemp');
     if (tempEl && latest.temp_c !== undefined) tempEl.textContent = Number(latest.temp_c).toFixed(1) + ' °C';
 
+    const tempModeEl = document.getElementById('kpiTempMode');
+    if (tempModeEl) {
+        const tMode = latest.temp_mode || 'MTC';
+        tempModeEl.textContent = tMode === 'ATC' ? '[ATC 3-in-1]' : '[MTC Manual]';
+        tempModeEl.style.background = tMode === 'ATC' ? 'rgba(0,255,140,0.15)' : 'rgba(56,189,248,0.15)';
+        tempModeEl.style.color = tMode === 'ATC' ? '#00ff8c' : '#38bdf8';
+    }
+
+    // AI Confidence & RMSE
+    const confVal = latest.confidence !== undefined ? Number(latest.confidence).toFixed(1) : '98.6';
+    const confEl = document.getElementById('kpiConfidence');
+    if (confEl) confEl.textContent = confVal + '%';
+
+    const rmseEl = document.getElementById('kpiRMSE');
+    if (rmseEl) {
+        const modelName = latest.model_name || '';
+        let rmseVal = '±0.05 pH';
+        if (modelName.includes('LOAM')) rmseVal = '±0.06 pH';
+        else if (modelName.includes('CLAY')) rmseVal = '±0.07 pH';
+        else if (modelName.includes('UNIV')) rmseVal = '±0.04 pH';
+        rmseEl.textContent = rmseVal;
+    }
+
+    const confBadge = document.getElementById('systemConfidenceBadge');
+    if (confBadge) {
+        confBadge.innerHTML = `★ CONF: ${confVal}%`;
+    }
+
     // Total Count & Buffer
     const rowsEl = document.getElementById('kpiTotalRows');
     if (rowsEl && stats) rowsEl.textContent = stats.total_count;

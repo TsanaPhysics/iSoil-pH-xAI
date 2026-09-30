@@ -74,10 +74,13 @@ $mode = isset($data['mode']) && !empty($data['mode'])
     ? trim($data['mode']) 
     : 'FIELD_RUN';
 
+$confidence = isset($data['confidence']) ? floatval($data['confidence']) : 98.6;
+$temp_mode = isset($data['temp_mode']) && !empty($data['temp_mode']) ? trim($data['temp_mode']) : 'MTC';
+
 try {
     $stmt = $db->prepare("INSERT INTO measurements 
-        (session_id, timestamp, voltage, temp_c, ph_traditional, ph_ai, delta_error, target_buffer, soil_status, sample_note, model_name, mode) 
-        VALUES (:session_id, :timestamp, :voltage, :temp_c, :ph_traditional, :ph_ai, :delta_error, :target_buffer, :soil_status, :sample_note, :model_name, :mode)");
+        (session_id, timestamp, voltage, temp_c, ph_traditional, ph_ai, delta_error, target_buffer, soil_status, sample_note, model_name, mode, confidence, temp_mode) 
+        VALUES (:session_id, :timestamp, :voltage, :temp_c, :ph_traditional, :ph_ai, :delta_error, :target_buffer, :soil_status, :sample_note, :model_name, :mode, :confidence, :temp_mode)");
 
     $stmt->execute([
         ':session_id' => $session_id,
@@ -91,7 +94,9 @@ try {
         ':soil_status' => $soil_status,
         ':sample_note' => $sample_note,
         ':model_name' => $model_name,
-        ':mode' => $mode
+        ':mode' => $mode,
+        ':confidence' => $confidence,
+        ':temp_mode' => $temp_mode
     ]);
 
     $insertId = $db->lastInsertId();

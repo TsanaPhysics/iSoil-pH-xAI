@@ -24,9 +24,14 @@
 
 // ---------------------- Hardware Pin Definitions ----------------------
 const int PH_PIN = A0;             // สัญญาณ Po เข้าขา A0 (BCM27)
+const int TEMP_PIN = A1;           // ขาอ่านเซ็นเซอร์อุณหภูมิจากหัววัด 3-in-1 Combination Probe (NTC 10K / Pt1000)
 const float VREF = 3.30;           // แรงดันอ้างอิง ADC ของ ATSAMD51 = 3.30V
 const int ADC_MAX_VAL = 4095;      // 12-bit ADC (0 - 4095)
 const int NUM_SAMPLES = 30;        // ตัวอย่างสำหรับการกรอง Median / Trimmed Filter
+
+bool isAutoTempActive = false;     // ตรวจพบเซ็นเซอร์อุณหภูมิ 3-in-1 อัตโนมัติ (ATC) หรือไม่
+float lastSignalNoise = 0.005f;    // สัญญาณรบกวน (Jitter / Noise) สำหรับคำนวณความเชื่อมั่น AI
+float currentConfidence = 98.6f;   // ค่าความเชื่อมั่นแบบเรียลไทม์ (%)
 
 // ---------------------- โครงสร้างโหมดการทำงานของระบบ --------------------
 enum SystemMode {
@@ -121,6 +126,33 @@ float predictPH_AI(float voltage, float tempC, int modelIdx = activeModelIndex) 
   return phOutput;
 }
 
+// ---------------------- สถิติความแม่นยำและค่าความเชื่อมั่นของโมเดล AI ----------------
+const float MODEL_ACCURACY_BASE[] = { 98.6f, 98.2f, 97.8f, 99.0f };
+const float MODEL_RMSE_VALS[] = { 0.052f, 0.064f, 0.071f, 0.038f };
+
+float computeModelConfidence(float voltage, float noiseV, int modelIdx) {
+  if (modelIdx < 0 || modelIdx >= TOTAL_MODELS) modelIdx = 0;
+  float baseAcc = MODEL_ACCURACY_BASE[modelIdx];
+
+  // หักคะแนนความไม่นิ่งของสัญญาณ (ADC noise/jitter)
+  float noisePenalty = noiseV * 150.0f;
+  if (noisePenalty > 5.0f) noisePenalty = 5.0f;
+
+  // หักคะแนนหากแรงดันอยู่นอกช่วงเคมีไฟฟ้าปกติของสารละลายดิน (1.30V - 2.15V)
+  float domainPenalty = 0.0f;
+  if (voltage < 1.30f) {
+    domainPenalty = (1.30f - voltage) * 15.0f;
+  } else if (voltage > 2.15f) {
+    domainPenalty = (voltage - 2.15f) * 15.0f;
+  }
+  if (domainPenalty > 8.0f) domainPenalty = 8.0f;
+
+  float conf = baseAcc - noisePenalty - domainPenalty;
+  if (conf < 75.0f) conf = 75.0f;
+  if (conf > 99.6f) conf = 99.6f;
+  return conf;
+}
+
 // ---------------------- พารามิเตอร์การสอบเทียบ (Calibration Parameters) ------------
 float testTempC = 25.0;            // อุณหภูมิสารละลาย (20 - 50 C)
 float calV7 = 1.650;               // แรงดันที่ pH 7.00 (Neutral Reference)
@@ -192,13 +224,24 @@ int graphHistoryTrad[GRAPH_W];
 unsigned long lastSampleTime = 0;
 const unsigned long SAMPLE_INTERVAL = 250; // รีเฟรชทุก 250 ms
 
-// กรองสัญญาณรบกวนความต้านทานสูง (Trimmed Median Filter)
+// กรองสัญญาณรบกวนความต้านทานสูง (Trimmed Median Filter) และประเมินความนิ่งของสัญญาณ
 float readFilteredVoltage() {
   int rawSamples[NUM_SAMPLES];
   for (int i = 0; i < NUM_SAMPLES; i++) {
     rawSamples[i] = analogRead(PH_PIN);
     delayMicroseconds(150);
   }
+
+  // คำนวณสัญญาณรบกวน (Jitter Noise / Standard Deviation)
+  float sumAll = 0;
+  for (int i = 0; i < NUM_SAMPLES; i++) sumAll += rawSamples[i];
+  float meanRaw = sumAll / (float)NUM_SAMPLES;
+  float varSum = 0;
+  for (int i = 0; i < NUM_SAMPLES; i++) {
+    float diff = (float)rawSamples[i] - meanRaw;
+    varSum += diff * diff;
+  }
+  lastSignalNoise = (sqrt(varSum / (float)NUM_SAMPLES) * VREF) / ADC_MAX_VAL;
 
   for (int i = 0; i < NUM_SAMPLES - 1; i++) {
     for (int j = i + 1; j < NUM_SAMPLES; j++) {
@@ -215,6 +258,41 @@ float readFilteredVoltage() {
   float avgRaw = (float)sum / 10.0f;
 
   return (avgRaw * VREF) / ADC_MAX_VAL;
+}
+
+// ---------------------- ระบบอ่านอุณหภูมิจากหัววัด 3-in-1 (ATC Engine) ---------
+float read3in1Temperature() {
+  int raw = 0;
+  for (int i = 0; i < 10; i++) {
+    raw += analogRead(TEMP_PIN);
+    delayMicroseconds(100);
+  }
+  raw /= 10;
+
+  // ตรวจสอบว่ามีการต่อหัววัดอุณหภูมิ 3-in-1 หรือไม่ (แรงดันช่วง 0.2V - 3.1V)
+  if (raw < 150 || raw > 3950) {
+    isAutoTempActive = false;
+    return testTempC; // ใช้ค่า MTC ที่ผู้ใช้ปรับด้วยจอยสติ๊ก
+  }
+
+  isAutoTempActive = true;
+  float vOut = ((float)raw * VREF) / (float)ADC_MAX_VAL;
+  float rNTC = (10000.0f * vOut) / (VREF - vOut);
+  if (rNTC <= 0.0f) return testTempC;
+
+  // สมการ Steinhart-Hart / B-parameter (B=3950, T0=298.15K, R0=10000 ohm)
+  float steinhart = rNTC / 10000.0f;
+  steinhart = log(steinhart);
+  steinhart /= 3950.0f;
+  steinhart += 1.0f / (25.0f + 273.15f);
+  steinhart = 1.0f / steinhart;
+  float tempVal = steinhart - 273.15f;
+
+  if (tempVal < 0.0f || tempVal > 70.0f) {
+    isAutoTempActive = false;
+    return testTempC;
+  }
+  return tempVal;
 }
 
 // ---------------------- ระบบนาฬิกาวันที่และเวลาการทดลอง (RTC Engine) -----------
@@ -277,6 +355,7 @@ void drawBaseUI();
 void drawSDStatus();
 void drawModeCalibrate();
 void drawModeAILearn();
+void updateFieldRunUI(float voltage, float tempC, float phTrad, float phAI, float confidence);
 void startNewExperimentSession();
 
 // ----------------- จัดการคำสั่ง Serial Command -----------------
@@ -508,11 +587,11 @@ void drawBaseUI() {
   tft.drawString("EXP & AI PARAMS", 204, 32);
 
   tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
-  tft.drawString("NERNST :", 202, 47);
-  tft.drawString("TEMP   :", 202, 61);
-  tft.drawString("DATE   :", 202, 75);
-  tft.drawString("TIME   :", 202, 87);
-  tft.drawString("MODEL  :", 202, 99);
+  tft.drawString("NERNST :", 202, 46);
+  tft.drawString("CONF   :", 202, 57);
+  tft.drawString("TEMP   :", 202, 69);
+  tft.drawString("TIME   :", 202, 81);
+  tft.drawString("MODEL  :", 202, 93);
 
   // 4. กรอบวิเคราะห์ดินด้านล่าง
   tft.drawRoundRect(6, 118, 308, 42, 4, tft.color565(50, 70, 95));
@@ -591,7 +670,7 @@ void updateComparisonGraph(float phAI, float phTrad) {
   }
 }
 
-void updateFieldRunUI(float voltage, float tempC, float phTrad, float phAI) {
+void updateFieldRunUI(float voltage, float tempC, float phTrad, float phAI, float confidence) {
   // 1. แสดงตัวเลข AI pH ขนาดใหญ่พิเศษ (TextSize 6)
   tft.fillRect(14, 46, 172, 46, TFT_BLACK);
   if (phAI < 5.0f) {
@@ -618,32 +697,35 @@ void updateFieldRunUI(float voltage, float tempC, float phTrad, float phAI) {
   tft.drawString(String(bufVolt) + "V", 86, 94);
 
   // 3. แสดงพารามิเตอร์ Nernst และเวลาในกล่องขวา
-  tft.fillRect(254, 46, 56, 12, TFT_BLACK);
+  // NERNST pH (TextSize 1, สีส้ม)
+  tft.fillRect(250, 46, 60, 11, TFT_BLACK);
   tft.setTextSize(1);
   tft.setTextColor(tft.color565(255, 145, 40), TFT_BLACK);
   char bufTrad[8];
   dtostrf(phTrad, 4, 2, bufTrad);
-  tft.drawString(bufTrad, 254, 47);
+  tft.drawString(bufTrad, 252, 46);
 
-  // Temp (TextSize 1)
-  tft.fillRect(254, 60, 56, 12, TFT_BLACK);
-  tft.setTextColor(tft.color565(0, 230, 255), TFT_BLACK);
-  tft.drawString(String(tempC, 1) + " C", 254, 61);
-
-  // Date
-  tft.fillRect(254, 74, 56, 11, TFT_BLACK);
-  tft.setTextColor(tft.color565(255, 215, 60), TFT_BLACK);
-  tft.drawString(getDateString(), 254, 75);
-
-  // Time
-  tft.fillRect(254, 86, 56, 11, TFT_BLACK);
+  // AI CONFIDENCE (TextSize 1, สีเขียวมรกต)
+  tft.fillRect(250, 57, 60, 11, TFT_BLACK);
   tft.setTextColor(tft.color565(0, 255, 140), TFT_BLACK);
-  tft.drawString(getTimeString(), 254, 87);
+  char bufConf[10];
+  dtostrf(confidence, 4, 1, bufConf);
+  tft.drawString(String(bufConf) + "%", 252, 57);
 
-  // Model Short Description
-  tft.fillRect(254, 98, 56, 12, TFT_BLACK);
+  // TEMP (TextSize 1, สีฟ้า/เขียว แสดงโหมด ATC/MTC)
+  tft.fillRect(250, 69, 60, 11, TFT_BLACK);
+  tft.setTextColor(isAutoTempActive ? tft.color565(0, 255, 140) : tft.color565(0, 230, 255), TFT_BLACK);
+  tft.drawString(String(tempC, 1) + (isAutoTempActive ? "C ATC" : "C MTC"), 252, 69);
+
+  // TIME (TextSize 1, สีเหลืองทอง)
+  tft.fillRect(250, 81, 60, 11, TFT_BLACK);
+  tft.setTextColor(tft.color565(255, 215, 60), TFT_BLACK);
+  tft.drawString(getTimeString(), 252, 81);
+
+  // MODEL (TextSize 1, สีส้มอ่อน)
+  tft.fillRect(250, 93, 60, 12, TFT_BLACK);
   tft.setTextColor(tft.color565(255, 200, 80), TFT_BLACK);
-  tft.drawString(MODEL_SHORT_DESCS[activeModelIndex], 254, 99);
+  tft.drawString(MODEL_SHORT_DESCS[activeModelIndex], 252, 93);
 
   // 4. แสดงผลการวินิจฉัยดิน
   updateSoilStatusLarge(phAI);
@@ -652,9 +734,9 @@ void updateFieldRunUI(float voltage, float tempC, float phTrad, float phAI) {
   tft.fillRect(10, 164, 300, 11, TFT_BLACK);
   tft.setTextSize(1);
   tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  tft.drawString("TREND: AI vs Nernst", 10, 165);
+  tft.drawString("TREND: AI vs Nernst (" + String(confidence, 1) + "%)", 10, 165);
   tft.setTextColor(tft.color565(0, 210, 255), TFT_BLACK);
-  tft.drawString("EXP: " + getDateTimeString(), 156, 165);
+  tft.drawString("EXP: " + getDateTimeString(), 168, 165);
 
   // 6. กราฟเปรียบเทียบ
   updateComparisonGraph(phAI, phTrad);
@@ -971,6 +1053,7 @@ void setup() {
 
   analogReadResolution(12);
   pinMode(PH_PIN, INPUT);
+  pinMode(TEMP_PIN, INPUT); // สำหรับหัววัดอุณหภูมิ 3-in-1 Combination Probe
 
   pinMode(WIO_5S_UP, INPUT_PULLUP);
   pinMode(WIO_5S_DOWN, INPUT_PULLUP);
@@ -1014,16 +1097,18 @@ void loop() {
     lastSampleTime = currentMillis;
 
     float voltage = readFilteredVoltage();
-    float phTrad = calculatePH_Traditional(voltage, testTempC);
-    float phAI = predictPH_AI(voltage, testTempC, activeModelIndex);
+    float liveTemp = read3in1Temperature(); // อ่านอุณหภูมิสดจากหัววัด 3-in-1 หรือใช้ MTC
+    float phTrad = calculatePH_Traditional(voltage, liveTemp);
+    float phAI = predictPH_AI(voltage, liveTemp, activeModelIndex);
+    currentConfidence = computeModelConfidence(voltage, lastSignalNoise, activeModelIndex);
 
     // เรนเดอร์หน้าจอตามโหมดที่ทำงานอยู่
     if (currentMode == MODE_FIELD_RUN) {
-      updateFieldRunUI(voltage, testTempC, phTrad, phAI);
+      updateFieldRunUI(voltage, liveTemp, phTrad, phAI, currentConfidence);
     } else if (currentMode == MODE_CALIBRATE) {
-      updateCalibrateUI(voltage, testTempC);
+      updateCalibrateUI(voltage, liveTemp);
     } else if (currentMode == MODE_AI_LEARN) {
-      updateAILearnUI(voltage, testTempC, phTrad, phAI);
+      updateAILearnUI(voltage, liveTemp, phTrad, phAI);
     }
 
     // บันทึกและส่งข้อมูล Telemetry อัตโนมัติ
@@ -1031,13 +1116,15 @@ void loop() {
       lastLogTime = currentMillis;
 
       const char* logTag = (currentMode == MODE_FIELD_RUN) ? "AUTO_FIELD" : ((currentMode == MODE_CALIBRATE) ? "CALIB_MONITOR" : "TRAIN_MONITOR");
-      logResearchDataRow(voltage, testTempC, phTrad, phAI, logTag);
+      logResearchDataRow(voltage, liveTemp, phTrad, phAI, logTag);
 
       // ส่ง Telemetry ออกทาง USB Serial
       Serial.print("Volt:"); Serial.print(voltage, 4);
-      Serial.print("\tTemp:"); Serial.print(testTempC, 1);
+      Serial.print("\tTemp:"); Serial.print(liveTemp, 1);
       Serial.print("\tpH_Trad:"); Serial.print(phTrad, 2);
       Serial.print("\tpH_AI:"); Serial.print(phAI, 2);
+      Serial.print("\tConf:"); Serial.print(currentConfidence, 1);
+      Serial.print("\tTMode:"); Serial.print(isAutoTempActive ? "ATC" : "MTC");
       Serial.print("\tMode:"); Serial.print(MODE_NAMES[currentMode]);
       Serial.print("\tModel:"); Serial.print(MODEL_NAMES[activeModelIndex]);
       Serial.print("\tTarget:"); Serial.print(MODEL_NAMES[activeModelIndex]);

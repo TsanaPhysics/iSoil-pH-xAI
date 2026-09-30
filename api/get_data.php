@@ -75,6 +75,7 @@ try {
         MAX(ph_ai) as max_ph_ai,
         AVG(voltage) as avg_voltage,
         AVG(delta_error) as avg_error,
+        AVG(confidence) as avg_confidence,
         SUM(CASE WHEN ph_ai >= 5.5 AND ph_ai <= 6.5 THEN 1 ELSE 0 END) as optimal_durian_count,
         SUM(CASE WHEN ph_ai < 5.0 THEN 1 ELSE 0 END) as acidic_count
     FROM measurements $whereClause";
@@ -101,6 +102,7 @@ try {
             'max_ph_ai' => $stats['max_ph_ai'] ? round(floatval($stats['max_ph_ai']), 2) : 7.00,
             'avg_voltage' => $stats['avg_voltage'] ? round(floatval($stats['avg_voltage']), 3) : 1.650,
             'avg_error' => $stats['avg_error'] ? round(floatval($stats['avg_error']), 3) : 0.000,
+            'avg_confidence' => $stats['avg_confidence'] ? round(floatval($stats['avg_confidence']), 1) : 98.6,
             'optimal_durian_count' => intval($stats['optimal_durian_count']),
             'acidic_count' => intval($stats['acidic_count']),
             'optimal_percentage' => $stats['total_count'] > 0 

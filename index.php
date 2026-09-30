@@ -40,6 +40,10 @@
                 🚀 FIELD RUN
             </div>
             
+            <div id="systemConfidenceBadge" class="pulse-badge" style="border-color:rgba(0,255,140,0.5); background:rgba(0,255,140,0.1); color:#00ff8c; font-weight:700;">
+                ★ CONF: 98.6%
+            </div>
+            
             <div id="systemModelBadge" class="pulse-badge" style="border-color:rgba(255,210,50,0.5); background:rgba(255,210,50,0.1); color:#ffd232; font-weight:700;">
                 🌳 ANN DURIAN
             </div>
@@ -78,7 +82,9 @@
                 <span id="kpiAIPH" class="kpi-huge-number">--.--</span>
                 <span id="kpiDeltaTag" class="kpi-delta-tag">+0.000 pH</span>
             </div>
-            <div class="kpi-subtext">Real-time Multilayer Perceptron TinyML Model</div>
+            <div class="kpi-subtext">
+                Confidence: <strong id="kpiConfidence" style="color:#00ff8c;">98.6%</strong> | Error: <strong id="kpiRMSE" style="color:#38bdf8;">±0.05 pH</strong>
+            </div>
         </div>
 
         <!-- Card 2: Traditional Nernst pH -->
@@ -103,7 +109,7 @@
                 <span id="kpiVoltage" class="kpi-huge-number" style="font-size: 2.2rem; color: var(--color-cyan); text-shadow:none;">-.--- V</span>
             </div>
             <div class="kpi-subtext">
-                Temperature: <strong id="kpiTemp" style="color:#fff;">--.- °C</strong> | 12-bit ADC (SAMD51)
+                Temp: <strong id="kpiTemp" style="color:#fff;">--.- °C</strong> <span id="kpiTempMode" style="font-size:0.75rem; color:#38bdf8; font-weight:700; background:rgba(56,189,248,0.15); padding:1px 6px; border-radius:3px;">[MTC]</span>
             </div>
         </div>
 

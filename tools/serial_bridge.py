@@ -55,6 +55,11 @@ def parse_line(line, active_session="EXP_001"):
         model_val = model_match.group(1).strip() if model_match else "ANN DURIAN"
         dt_match = re.search(r'DateTime:([0-9\-]+ [0-9:]+)', line)
 
+        conf_match = re.search(r'Conf:([0-9\.]+)', line)
+        tmode_match = re.search(r'TMode:([A-Za-z0-9_]+)', line)
+        conf_val = float(conf_match.group(1)) if conf_match else 98.6
+        tmode_val = tmode_match.group(1).strip() if tmode_match else "MTC"
+
         if v_match and pa_match:
             voltage = float(v_match.group(1))
             temp_c = float(t_match.group(1)) if t_match else 25.0
@@ -71,9 +76,11 @@ def parse_line(line, active_session="EXP_001"):
                 "temp_c": temp_c,
                 "ph_traditional": ph_trad,
                 "ph_ai": ph_ai,
+                "confidence": conf_val,
+                "temp_mode": tmode_val,
                 "target_buffer": target,
                 "datetime": datetime_val,
-                "sample_note": f"MODE:{mode_val}|MODEL:{model_val}"
+                "sample_note": f"MODE:{mode_val}|MODEL:{model_val}|CONF:{conf_val}%"
             }
     except Exception as e:
         pass
@@ -143,7 +150,7 @@ def main():
                                 last_post_time = now
                                 success = send_to_api(data)
                                 status_tag = "✓ SAVED" if success else "✗ FAIL"
-                                print(f"[{data['datetime']}] {status_tag} | [{data['session_id']}] [{data['mode']}] [{data['model_name']}] pH_AI: {data['ph_ai']:.2f} | Volt: {data['voltage']:.3f}V | Temp: {data['temp_c']}C")
+                                print(f"[{data['datetime']}] {status_tag} | [{data['session_id']}] [{data['mode']}] [{data['model_name']}] pH_AI: {data['ph_ai']:.2f} | Conf: {data['confidence']:.1f}% | Volt: {data['voltage']:.3f}V | Temp: {data['temp_c']}C ({data['temp_mode']})")
         except (serial.SerialException, OSError) as e:
             print(f"[!] Serial disconnected: {e}. Reconnecting in 3s...")
             time.sleep(3)
