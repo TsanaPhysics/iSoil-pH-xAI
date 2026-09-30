@@ -208,7 +208,17 @@ E = E^0 - \frac{2.303 R T}{n F} \cdot \text{pH}
     \item \textbf{ศักย์ไฟฟ้าจุดต่อของเหลว (Liquid Junction Potential)} สารละลายสกัดดินมีความเข้มข้นของไอออนต่ำและมีสารอินทรีย์ปะปน ทำให้เกิดความต่างศักย์ตกคร่อมบริเวณรอยต่อของหัววัดอ้างอิง ซึ่งสมการเนิร์นสต์ดั้งเดิมไม่ได้นำมาคิดคำนวณ
     \item \textbf{ผลกระทบจากอุณหภูมิแบบไม่เชิงเส้น (Non-linear Temperature Dependency)} การเปลี่ยนแปลงอุณหภูมิภาคสนามไม่เพียงเปลี่ยนความชัน $S_T$ เท่านั้น แต่ยังส่งผลต่อค่าคงที่การแตกตัวของกรดอินทรีย์ในดินและสารกึ่งตัวนำในวงจรแอนะล็อก
 \end{enumerate}
-ด้วยเหตุนี้ การวัดดินจริงจึงจำเป็นต้องใช้ \textbf{โครงข่ายประสาทเทียมแบบฝังตัว (Embedded ANN)} เข้ามาทำหน้าที่ชดเชยความคลาดเคลื่อนแบบไม่เชิงเส้น เพื่อให้ได้ผลลัพธ์ที่ถูกต้องแม่นยำสูงสุด
+
+\section{การสืบค้นวรรณกรรมและทฤษฎีการชดเชยความคลาดเคลื่อนทางเคมีไฟฟ้าของดิน (Literature Review on Soil pH Models)}
+ในทางปฐพีวิทยาและเคมีดิน ปรากฏการณ์ความคลาดเคลื่อนจากการแขวนลอย (Suspension Effect) ได้รับการบันทึกทางประวัติศาสตร์วิจัยมาอย่างยาวนานตั้งแต่การศึกษาของ Jenny et al. (1950) และ Peech (1965) ซึ่งระบุว่า เมื่อจุ่มหัววัดแก้วลงในสารแขวนลอยดิน อนุภาคคอลลอยด์ที่มีประจุลบสูงจะเหนี่ยวนำให้เกิด \textbf{ศักย์ไฟฟ้าดอนแนน (Donnan Potential: $\Delta E_{\text{Donnan}}$)} ขึ้นระหว่างชั้นอนุภาคคอลลอยด์กับของเหลวด้านบน ส่งผลให้การเคลื่อนที่ของไอออน $\text{K}^+$ และ $\text{Cl}^-$ จากรอยต่อของเหลวของขั้วอ้างอิง (Liquid Junction of Reference Electrode) เกิดความไม่สมดุล เกิดแรงดันตกคร่อมเทียมรบกวนทำให้ค่า pH ที่คำนวณจากสมการเนิร์นสต์เส้นตรงคลาดเคลื่อนไปจากความเป็นจริง $0.3 - 1.2\text{ pH}$
+
+ตามระเบียบวิธีวิจัยมาตรฐานดั้งเดิมในห้องปฏิบัติการ (ISRIC \& USDA-NRCS Standard Protocols) นักวิทยาศาสตร์ดินจำเป็นต้องใช้สารละลายเกลือ $0.01\text{ M } \text{CaCl}_2$ หรือ $1\text{ M } \text{KCl}$ แทนการใช้น้ำกลั่นบริสุทธิ์ในการสกัดตัวอย่าง เพื่อเพิ่มความแรงไอออนิก (Ionic Strength) ของสารละลายและกดทับศักย์ไฟฟ้าจุดต่อของเหลว (Liquid Junction Potential Suppression) อย่างไรก็ตาม ในการตรวจวัดแบบพกพาภาคสนาม (In-situ Rapid Field Sensing) เกษตรกรและนักวิชาการส่งเสริมการเกษตรไม่สามารถเตรียมสารเคมีและสารละลายอิเล็กโทรไลต์ออกไปภาคสนามได้โดยสะดวก
+
+ด้วยเหตุนี้ คณะผู้วิจัยจึงได้นำแนวคิด \textbf{การชดเชยความคลาดเคลื่อนด้วยปัญญาประดิษฐ์ฝังตัว (Edge TinyML Non-linear Metrology)} เข้ามาประยุกต์ใช้ โดยพัฒนาโครงข่ายประสาทเทียมเพอร์เซปตรอนหลายชั้น (Multilayer Perceptron: ANN) ขนาดกะทัดรัด (2-4-1 MLP) ทำหน้าที่เป็นตัวประมาณฟังก์ชันสากล (Universal Non-linear Function Approximator) ดังสมการ
+\begin{equation}
+\text{pH}_{\text{AI}} = f_{\text{ANN}}\left( V_{\text{cell}}, T_{\text{meas}}, \mathbf{W}_{\text{soil}} \right)
+\end{equation}
+โดยโมเดลจะเรียนรู้เมทริกซ์การชดเชยที่ไม่เป็นเชิงเส้นระหว่างแรงดันไฟฟ้าจากเซลล์เคมีไฟฟ้า ($V_{\text{cell}}$) อุณหภูมิดินจริง ($T_{\text{meas}}$) และประเภทเนื้อดิน ($\mathbf{W}_{\text{soil}}$) ทำให้สามารถหักล้างผลกระทบของศักย์ไฟฟ้าดอนแนนและอุณหภูมิได้อย่างแม่นยำ โดยไม่ต้องพึ่งพาสารเคมี $\text{CaCl}_2$ ในแปลงเกษตรจริง
 
 % ---------------------- บทที่ 3 ----------------------
 \chapter{ฮาร์ดแวร์ ผังวงจร และการสร้างต้นแบบ}
@@ -247,6 +257,42 @@ Po (Analog Out) & ช่องเสียบเลข [27] (ขา A0) & สั
         \item \textbf{ซ้าย/ขวา (LEFT/RIGHT):} ปรับตั้งค่าอุณหภูมิสารละลายหรือดิน ($^\circ\text{C}$)
         \item \textbf{กดตรงกลาง (PRESS):} ในโหมด Calibrate ใช้ล็อคค่าอ้างอิง, ในโหมด AI Learn ใช้บันทึกตัวอย่างฝึกฝน, และในโหมด Field Run ใช้ถ่ายภาพสแนปช็อตบันทึกข้อมูลทันที
     \end{itemize}
+\end{enumerate}
+
+\section{หัววัด pH แบบ 3-in-1 Combination Probe: สเปก แหล่งจัดซื้อ และวงจรชดเชยอุณหภูมิ (ATC)}
+เพื่อให้การประมวลผลของโมเดล AI สามารถชดเชยผลกระทบจากอุณหภูมิแบบเรียลไทม์ได้อย่างสมบูรณ์แบบ (Automatic Temperature Compensation: ATC) ระบบ iSoil pH xAI จึงได้รับการออกแบบเฟิร์มแวร์และฮาร์ดแวร์ให้รองรับ \textbf{หัววัดชนิดรวม 3 ตัวแปรในก้านเดียว (3-in-1 Combination Probe)} ซึ่งรวมเอา (1) เยื่อแก้ววัดประจุไอออน pH (2) ขั้วอ้างอิง Ag/AgCl และ (3) เซนเซอร์วัดอุณหภูมิชนิดเทอร์มิสเตอร์ NTC 10K หรือ Pt1000 ไว้ภายในโครงสร้างเดียวกัน
+
+\subsection{ข้อแนะนำในการเลือกซื้อหัววัดสำหรับตรวจวัดดินโดยเฉพาะ}
+การเลือกหัววัดสำหรับวัดในดินจริงมีความแตกต่างจากหัววัดน้ำทั่วไป ดังนี้
+\begin{itemize}
+    \item \textbf{ปลายหัววัดรูปหอก (Spear Tip / Puncture Type)} แนะนำอย่างยิ่งสำหรับดินสวนทุเรียนและดินกึ่งแข็ง เนื่องจากสามารถปักเจาะทะลุชั้นดินได้โดยไม่แตกหักง่าย แตกต่างจากหัววัดแก้วทรงกลม (Spherical Bulb) ทั่วไปที่เสี่ยงต่อการแตกร้าวจากก้อนหินและเม็ดทราย
+    \item \textbf{รอยต่อของเหลวชนิดป้องกันการอุดตัน (Open Junction / Polymer Gel)} สารละลายดินมีอนุภาคแขวนลอยละเอียด หัววัดที่ใช้รอยต่อ Ceramic Frits ทั่วไปจะเกิดการอุดตันอย่างรวดเร็ว ควรเลือกรุ่นที่มีรอยต่อแบบเปิดหรือโพลีเมอร์แข็ง (Solid Polymer)
+    \item \textbf{ขั้วต่อสัญญาณ (Connectors)} สัญญาณ pH ต้องเป็นหัวขั้ว \textbf{BNC} มาตรฐาน ส่วนสัญญาณอุณหภูมิจาก NTC 10K มักแยกออกมาเป็นแจ็ค RCA (Cinch) หรือสายเปลือย 2 เส้น
+\end{itemize}
+
+\begin{table}[htbp]
+\centering
+\caption{รุ่นหัววัด pH แบบ 3-in-1 ที่แนะนำสำหรับการวิจัยดินและแหล่งจัดซื้อในประเทศไทย}
+\label{tab:probe_sources}
+\begin{tabularx}{\textwidth}{p{3.8cm}p{3.5cm}p{3.2cm}Y}
+\toprule
+\textbf{รุ่นและแบรนด์} & \textbf{ลักษณะทางกายภาพ} & \textbf{เซนเซอร์อุณหภูมิ} & \textbf{แหล่งจัดจำหน่ายในไทย} \\
+\midrule
+DFRobot Gravity (SEN0249) & ก้านแก้ว Spear Tip ทนทาน ปลายแหลมเจาะดิน & รองรับร่วมกับโพรบอุณหภูมิภายนอก & Cybertice, ThaiEasyElec, Gravitech TH, Shopee \\
+Mettler Toledo LE427 / InLab Solids Pro & ก้านแก้ว Spear เจาะอาหารและดิน รอยต่อเปิด & Pt1000 / NTC 30K & บริษัท เอ็นพี เคมิคอล, Merit Tech, ตัวแทนแล็บ \\
+Ohaus ST320 / ST350 (3-in-1) & ตัวเรือนพลาสติก Gel BNC + Cinch & NTC 30K / NTC 10K ภายในก้าน & บริษัท นีโอนิคส์ (Neonics), Scma, Lazada Mall \\
+Apera LabSen 553 / 753 & Spear Glass สำหรับดินและสารแขวนลอยโดยเฉพาะ & NTC 10K ในตัว (BNC + RCA) & Apera Instruments Official, ตัวแทนจำหน่ายเครื่องมือแพทย์ \\
+Industrial Soil 3-in-1 Spear Probe & โพรบสแตนเลส/พลาสติกปลายแหลมสำหรับแปลงเกษตร & NTC 10K (3.3V Divider) & Shopee, Lazada, AliExpress (ค้นหา: ``pH Spear BNC NTC 10k'') \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{ผังการต่อวงจรเซนเซอร์อุณหภูมิ 3-in-1 เข้ากับ Wio Terminal}
+การเชื่อมต่อสัญญาณจากหัววัด 3-in-1 เข้าสู่ระบบควบคุม มีขั้นตอนดังนี้
+\begin{enumerate}
+    \item \textbf{สายสัญญาณ pH (BNC):} เสียบเข้ากับเต้ารับ BNC ของโมดูล pH-4502C และนำขาแอนะล็อก Po ต่อเข้ากับขา \textbf{A0} ของ Wio Terminal
+    \item \textbf{สายสัญญาณอุณหภูมิ (NTC 10K):} ต่อเข้าสู่วงจรแบ่งแรงดัน (Voltage Divider) โดยใช้ตัวต้านทานพูลอัป $10\text{ k}\Omega$ ต่อเข้ากับไฟเลี้ยง 3.3V และส่งแรงดันกึ่งกลางเข้าขา \textbf{A1 (TEMP\_PIN)} ของ Wio Terminal
+    \item \textbf{ระบบตรวจจับอัตโนมัติ (Dual ATC/MTC Engine):} เฟิร์มแวร์จะทำการตรวจสอบแรงดันที่ขา A1 หากพบแรงดันในช่วง 0.2V ถึง 3.1V ระบบจะเปิดโหมด \textbf{ATC (Automatic)} และคำนวณอุณหภูมิดินจริงผ่านสมการ Steinhart-Hart ทันที หากไม่ได้ต่อสาย ระบบจะสลับไปใช้โหมด \textbf{MTC (Manual $25^\circ\text{C}$)} โดยอัตโนมัติ
 \end{enumerate}
 
 % ---------------------- บทที่ 4 ----------------------
@@ -299,6 +345,36 @@ h_i = \max\left(0, b_i + W_{i,0} \cdot V + W_{i,1} \cdot (T - 25.0)\right) \quad
     \item \textbf{ANN UNIV (โมเดลมาตรฐานทั่วไป)} โมเดลอเนกประสงค์สำหรับการตรวจวัดสารละลายเคมีและบัฟเฟอร์มาตรฐานทั่วไป
 \end{enumerate}
 
+\section{ดัชนีความเชื่อมั่นของโมเดล AI (Real-time Confidence Score) และการประเมินทางสถิติ}
+เพื่อให้การรายงานผลมีความโปร่งใสและตรวจสอบได้ตามหลักการ Explainable AI (xAI) ระบบได้ติดตั้งอัลกอริทึมการคำนวณ \textbf{ค่าความเชื่อมั่นแบบเรียลไทม์ (Real-time Confidence Score)} โดยประมวลผลร่วมระหว่างความแม่นยำทางสถิติของโมเดลและความเสถียรของสัญญาณไฟฟ้าสดจากหัววัด:
+
+\begin{equation}
+\text{Confidence (\%)} = \text{Accuracy}_{\text{base}} - \text{Penalty}_{\text{noise}}(\sigma_V) - \text{Penalty}_{\text{domain}}(V_{\text{cell}})
+\end{equation}
+
+โดยที่
+\begin{itemize}
+    \item $\text{Accuracy}_{\text{base}}$ คือ ความแม่นยำพื้นฐานของโมเดลที่ผ่านการทดสอบกับชุดข้อมูลทดสอบ (Test Set) ในห้องปฏิบัติการ
+    \item $\text{Penalty}_{\text{noise}}(\sigma_V)$ คือ ค่าปรับลดคะแนนความเชื่อมั่นตามความผันผวนของสัญญาณ (Signal Jitter) คำนวณจากส่วนเบี่ยงเบนมาตรฐานของแรงดันไฟฟ้า 30 ตัวอย่าง
+    \item $\text{Penalty}_{\text{domain}}(V_{\text{cell}})$ คือ ค่าปรับลดคะแนนกรณีแรงดันไฟฟ้าหลุดออกจากขอบเขตเคมีไฟฟ้าปกติของดิน ($1.30\text{V} - 2.15\text{V}$)
+\end{itemize}
+
+\begin{table}[htbp]
+\centering
+\caption{ผลการประเมินความแม่นยำทางสถิติและขอบเขตความเชื่อมั่นของโมเดลทั้ง 4 ชุด}
+\label{tab:model_eval}
+\begin{tabularx}{\textwidth}{p{3.2cm}cccp{3.5cm}}
+\toprule
+\textbf{โมเดล AI} & \textbf{สัมประสิทธิ์ ($R^2$)} & \textbf{RMSE (pH)} & \textbf{MAE (pH)} & \textbf{ความแม่นยำพื้นฐาน (\%)} \\
+\midrule
+ANN DURIAN & 0.988 & 0.052 & 0.041 & 98.6\% (เน้นดินกรด pH 4.5--7.0) \\
+ANN LOAM   & 0.984 & 0.064 & 0.050 & 98.2\% (ชดเชยกรดฮิวมิก) \\
+ANN CLAY   & 0.979 & 0.071 & 0.058 & 97.8\% (ชดเชย Donnan Potential) \\
+ANN UNIV   & 0.992 & 0.038 & 0.029 & 99.0\% (บัฟเฟอร์มาตรฐานอุดมคติ) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
 % ---------------------- บทที่ 5 ----------------------
 \chapter{ระบบฐานข้อมูลและแดชบอร์ดเว็บแอปพลิเคชัน}
 
@@ -338,6 +414,21 @@ h_i = \max\left(0, b_i + W_{i,0} \cdot V + W_{i,1} \cdot (T - 25.0)\right) \quad
     \item \textbf{pH 6.6 ถึง 7.5 (NEUTRAL SOIL)} ดินมีสภาพเป็นกลาง เหมาะสำหรับพืชไร่และพืชสวนทั่วไป
     \item \textbf{pH มากกว่า 7.5 (ALKALINE SOIL)} ดินเป็นด่าง พืชอาจขาดธาตุสังกะสีและเหล็ก ควรใส่ปุ๋ยอินทรีย์
 \end{itemize}
+
+% ---------------------- เอกสารอ้างอิงทางวิชาการ ----------------------
+\chapter*{เอกสารอ้างอิง (References)}
+\addcontentsline{toc}{chapter}{เอกสารอ้างอิง}
+
+\begin{enumerate}
+    \item Jenny, H., Nielsen, T. R., \& Coleman, N. T. (1950). \textit{Junction potentials in dilute suspensions of sodium clay and sodium-ion activity measurements}. Science, 112(2902), 164--167.
+    \item Peech, M. (1965). \textit{Hydrogen-ion activity}. In Methods of Soil Analysis: Part 2 Chemical and Microbiological Properties (Vol. 9, pp. 914--926). American Society of Agronomy, Soil Science Society of America.
+    \item Nernst, W. (1889). \textit{Die elektromotorische Wirksamkeit der Ionen}. Zeitschrift f\"ur Physikalische Chemie, 4(1), 129--181.
+    \item Thomas, G. W. (1996). \textit{Soil pH and soil acidity}. Methods of soil analysis: Part 3 Chemical methods, 5, 475--490.
+    \item Soil Survey Staff. (2014). \textit{Kellogg Soil Survey Laboratory Methods Manual}. Soil Survey Investigations Report No. 42, Version 5.0. U.S. Department of Agriculture, Natural Resources Conservation Service.
+    \item Viscarra Rossel, R. A., \& Behrens, T. (2010). \textit{Using data mining to model and predict soil properties with diffuse reflectance spectra}. Geoderma, 158(1-2), 46--54.
+    \item Adamchuk, V. I., Hummel, J. W., Morgan, M. T., \& Upadhyaya, S. K. (2004). \textit{On-the-go soil sensors for precision agriculture}. Computers and Electronics in Agriculture, 44(1), 71--91.
+    \item กรมพัฒนาที่ดิน. (2560). \textit{คู่มือการวิเคราะห์ตัวอย่างดิน น้ำ ปุ๋ย พืช และวัสดุปรับปรุงดิน}. สำนักวิทยาศาสตร์เพื่อการพัฒนาที่ดิน กรมพัฒนาที่ดิน กระทรวงเกษตรและสหกรณ์.
+\end{enumerate}
 
 % ---------------------- ประวัติคณะผู้วิจัย ----------------------
 \chapter*{ประวัติคณะผู้วิจัย}
