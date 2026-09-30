@@ -36,6 +36,14 @@
                 <span>CONNECTING...</span>
             </div>
             
+            <div id="systemModeBadge" class="pulse-badge" style="border-color:rgba(0,210,255,0.5); background:rgba(0,210,255,0.1); color:#00e6ff; font-weight:700;">
+                🚀 FIELD RUN
+            </div>
+            
+            <div id="systemModelBadge" class="pulse-badge" style="border-color:rgba(255,210,50,0.5); background:rgba(255,210,50,0.1); color:#ffd232; font-weight:700;">
+                🌳 ANN DURIAN
+            </div>
+            
             <select id="sessionSelect" class="btn-action" style="background:rgba(15,23,42,0.9); color:#f0f4fc; border:1px solid rgba(0,230,130,0.4); font-weight:600; cursor:pointer;" title="เลือกเซสชันการทดลอง">
                 <option value="">📁 เซสชันล่าสุด (Latest)</option>
             </select>
@@ -109,8 +117,10 @@
                 <span id="kpiTotalRows" class="kpi-huge-number" style="font-size: 2.2rem; color: var(--color-gold); text-shadow:none;">0</span>
                 <span class="kpi-subtext" style="font-size:1rem; font-weight:700;">Records</span>
             </div>
-            <div class="kpi-subtext">
-                🗂️ เซสชัน: <strong id="kpiActiveSession" style="color:var(--color-gold);">EXP_001</strong> | 📅 ล่าสุด: <strong id="kpiSampleDateTime" style="color:var(--color-cyan);">--</strong>
+            <div class="kpi-subtext" style="line-height:1.5;">
+                🗂️ เซสชัน: <strong id="kpiActiveSession" style="color:var(--color-gold);">EXP_005</strong><br>
+                🧠 โมเดล: <strong id="kpiActiveModel" style="color:var(--color-emerald);">ANN DURIAN</strong> | โหมด: <strong id="kpiActiveMode" style="color:var(--color-cyan);">FIELD_RUN</strong><br>
+                📅 ล่าสุด: <strong id="kpiSampleDateTime" style="color:#f0f4fc;">--</strong>
             </div>
         </div>
 
@@ -167,16 +177,17 @@
                         <tr>
                             <th>ID</th>
                             <th>วัน - เวลา (Date & Time)</th>
+                            <th>โหมด (Mode)</th>
+                            <th>โมเดล AI (Model)</th>
                             <th>pH (AI)</th>
                             <th>pH (Trad)</th>
                             <th>Volt</th>
                             <th>Temp</th>
-                            <th>Buffer</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody">
                         <tr>
-                            <td colspan="7" style="text-align:center; color:var(--text-dim); padding:20px;">
+                            <td colspan="8" style="text-align:center; color:var(--text-dim); padding:20px;">
                                 กำลังรอสัญญาณข้อมูลจาก Wio Terminal...
                             </td>
                         </tr>

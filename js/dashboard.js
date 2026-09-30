@@ -230,7 +230,39 @@ function updateKPIs(latest, stats, activeSession) {
     // Active Session Badge
     const sessBadge = document.getElementById('kpiActiveSession');
     if (sessBadge) {
-        sessBadge.textContent = activeSession || latest.session_id || 'EXP_001';
+        sessBadge.textContent = activeSession || latest.session_id || 'EXP_005';
+    }
+
+    // Active Model & Mode
+    const modelEl = document.getElementById('kpiActiveModel');
+    if (modelEl) modelEl.textContent = latest.model_name || 'ANN DURIAN';
+    const modeEl = document.getElementById('kpiActiveMode');
+    if (modeEl) modeEl.textContent = latest.mode || 'FIELD_RUN';
+
+    // Header Badges
+    const modeBadge = document.getElementById('systemModeBadge');
+    if (modeBadge && latest.mode) {
+        if (latest.mode === 'CALIBRATE') {
+            modeBadge.innerHTML = '🧪 CALIBRATE';
+            modeBadge.style.color = '#38bdf8';
+            modeBadge.style.borderColor = 'rgba(56, 189, 248, 0.5)';
+            modeBadge.style.background = 'rgba(56, 189, 248, 0.15)';
+        } else if (latest.mode === 'AI_LEARN') {
+            modeBadge.innerHTML = '🧬 AI LEARN';
+            modeBadge.style.color = '#c084fc';
+            modeBadge.style.borderColor = 'rgba(192, 132, 252, 0.5)';
+            modeBadge.style.background = 'rgba(192, 132, 252, 0.15)';
+        } else {
+            modeBadge.innerHTML = '🚀 FIELD RUN';
+            modeBadge.style.color = '#00e682';
+            modeBadge.style.borderColor = 'rgba(0, 230, 130, 0.5)';
+            modeBadge.style.background = 'rgba(0, 230, 130, 0.15)';
+        }
+    }
+
+    const modelBadge = document.getElementById('systemModelBadge');
+    if (modelBadge && latest.model_name) {
+        modelBadge.innerHTML = `🌳 ${latest.model_name}`;
     }
 
     // Sample Date & Time
@@ -302,11 +334,12 @@ function updateTable(history) {
             <tr class="${highlightClass}">
                 <td>#${item.id}</td>
                 <td><span style="font-family:'JetBrains Mono'; font-weight:600; color:#38bdf8; font-size:0.85rem;">${item.timestamp}</span></td>
+                <td><span style="font-size:0.75rem; font-weight:700; padding:2px 8px; border-radius:4px; background:rgba(56,189,248,0.15); color:#38bdf8;">${item.mode || 'FIELD_RUN'}</span></td>
+                <td><span style="font-size:0.75rem; font-weight:700; padding:2px 8px; border-radius:4px; background:rgba(255,210,50,0.15); color:#ffd232;">${item.model_name || 'ANN DURIAN'}</span></td>
                 <td style="color: var(--color-green); font-weight:700;">${Number(item.ph_ai).toFixed(2)}</td>
                 <td style="color: var(--color-orange);">${Number(item.ph_traditional).toFixed(2)}</td>
                 <td>${Number(item.voltage).toFixed(3)} V</td>
                 <td>${Number(item.temp_c).toFixed(1)} °C</td>
-                <td><span style="font-size:0.75rem; color:var(--text-muted);">${item.target_buffer}</span></td>
             </tr>
         `;
     });

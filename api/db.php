@@ -34,21 +34,29 @@ try {
         sample_note TEXT DEFAULT ''
     )");
 
-    // ตรวจสอบและเพิ่มคอลัมน์ session_id สำหรับฐานข้อมูลเดิม
+    // ตรวจสอบและเพิ่มคอลัมน์ session_id, model_name, mode สำหรับฐานข้อมูลเดิม
     $cols = $db->query("PRAGMA table_info(measurements)")->fetchAll();
     $hasSession = false;
+    $hasModel = false;
+    $hasMode = false;
     foreach ($cols as $c) {
-        if ($c['name'] === 'session_id') {
-            $hasSession = true;
-            break;
-        }
+        if ($c['name'] === 'session_id') $hasSession = true;
+        if ($c['name'] === 'model_name') $hasModel = true;
+        if ($c['name'] === 'mode') $hasMode = true;
     }
     if (!$hasSession) {
         $db->exec("ALTER TABLE measurements ADD COLUMN session_id TEXT DEFAULT 'EXP_001'");
     }
+    if (!$hasModel) {
+        $db->exec("ALTER TABLE measurements ADD COLUMN model_name TEXT DEFAULT 'ANN DURIAN'");
+    }
+    if (!$hasMode) {
+        $db->exec("ALTER TABLE measurements ADD COLUMN mode TEXT DEFAULT 'FIELD_RUN'");
+    }
 
     $db->exec("CREATE INDEX IF NOT EXISTS idx_timestamp ON measurements(timestamp)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_session ON measurements(session_id)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_model ON measurements(model_name)");
 } catch (PDOException $e) {
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);

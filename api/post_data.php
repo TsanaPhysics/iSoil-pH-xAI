@@ -66,10 +66,18 @@ $session_id = isset($data['session_id']) && !empty($data['session_id'])
     ? trim($data['session_id']) 
     : 'EXP_001';
 
+$model_name = isset($data['model_name']) && !empty($data['model_name']) 
+    ? trim($data['model_name']) 
+    : 'ANN DURIAN';
+
+$mode = isset($data['mode']) && !empty($data['mode']) 
+    ? trim($data['mode']) 
+    : 'FIELD_RUN';
+
 try {
     $stmt = $db->prepare("INSERT INTO measurements 
-        (session_id, timestamp, voltage, temp_c, ph_traditional, ph_ai, delta_error, target_buffer, soil_status, sample_note) 
-        VALUES (:session_id, :timestamp, :voltage, :temp_c, :ph_traditional, :ph_ai, :delta_error, :target_buffer, :soil_status, :sample_note)");
+        (session_id, timestamp, voltage, temp_c, ph_traditional, ph_ai, delta_error, target_buffer, soil_status, sample_note, model_name, mode) 
+        VALUES (:session_id, :timestamp, :voltage, :temp_c, :ph_traditional, :ph_ai, :delta_error, :target_buffer, :soil_status, :sample_note, :model_name, :mode)");
 
     $stmt->execute([
         ':session_id' => $session_id,
@@ -81,7 +89,9 @@ try {
         ':delta_error' => $delta_error,
         ':target_buffer' => $target_buffer,
         ':soil_status' => $soil_status,
-        ':sample_note' => $sample_note
+        ':sample_note' => $sample_note,
+        ':model_name' => $model_name,
+        ':mode' => $mode
     ]);
 
     $insertId = $db->lastInsertId();

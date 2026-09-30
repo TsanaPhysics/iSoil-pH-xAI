@@ -49,6 +49,10 @@ def parse_line(line, active_session="EXP_001"):
         sess_match = re.search(r'Session:([A-Za-z0-9_\-]+)', line)
         session_val = sess_match.group(1).strip() if sess_match else active_session
 
+        mode_match = re.search(r'Mode:([^\t\r\n]+)', line)
+        model_match = re.search(r'Model:([^\t\r\n]+)', line)
+        mode_val = mode_match.group(1).strip() if mode_match else "FIELD_RUN"
+        model_val = model_match.group(1).strip() if model_match else "ANN DURIAN"
         dt_match = re.search(r'DateTime:([0-9\-]+ [0-9:]+)', line)
 
         if v_match and pa_match:
@@ -61,13 +65,15 @@ def parse_line(line, active_session="EXP_001"):
 
             return {
                 "session_id": session_val,
+                "model_name": model_val,
+                "mode": mode_val,
                 "voltage": voltage,
                 "temp_c": temp_c,
                 "ph_traditional": ph_trad,
                 "ph_ai": ph_ai,
                 "target_buffer": target,
                 "datetime": datetime_val,
-                "sample_note": "LIVE_WIO_STREAM"
+                "sample_note": f"MODE:{mode_val}|MODEL:{model_val}"
             }
     except Exception as e:
         pass
@@ -137,7 +143,7 @@ def main():
                                 last_post_time = now
                                 success = send_to_api(data)
                                 status_tag = "✓ SAVED" if success else "✗ FAIL"
-                                print(f"[{data['datetime']}] {status_tag} | [{data['session_id']}] pH_AI: {data['ph_ai']:.2f} | Volt: {data['voltage']:.3f}V | Temp: {data['temp_c']}C | Target: {data['target_buffer']}")
+                                print(f"[{data['datetime']}] {status_tag} | [{data['session_id']}] [{data['mode']}] [{data['model_name']}] pH_AI: {data['ph_ai']:.2f} | Volt: {data['voltage']:.3f}V | Temp: {data['temp_c']}C")
         except (serial.SerialException, OSError) as e:
             print(f"[!] Serial disconnected: {e}. Reconnecting in 3s...")
             time.sleep(3)
