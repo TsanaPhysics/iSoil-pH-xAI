@@ -207,25 +207,35 @@ function updateKPIs(latest, stats, activeSession) {
 
     // AI Predicted pH
     const aiEl = document.getElementById('kpiAIPH');
-    aiEl.textContent = Number(latest.ph_ai).toFixed(2);
+    if (aiEl && latest.ph_ai !== undefined) aiEl.textContent = Number(latest.ph_ai).toFixed(2);
 
     // Traditional Nernst pH
     const tradEl = document.getElementById('kpiTradPH');
-    tradEl.textContent = Number(latest.ph_traditional).toFixed(2);
+    if (tradEl && latest.ph_traditional !== undefined) tradEl.textContent = Number(latest.ph_traditional).toFixed(2);
 
     // Delta Compensation Tag
     const deltaEl = document.getElementById('kpiDeltaTag');
-    const delta = Number(latest.delta_error);
-    deltaEl.textContent = (delta >= 0 ? '+' : '') + delta.toFixed(3) + ' pH';
+    if (deltaEl && latest.delta_error !== undefined) {
+        const delta = Number(latest.delta_error);
+        deltaEl.textContent = (delta >= 0 ? '+' : '') + delta.toFixed(3) + ' pH';
+    }
 
     // Cell Potential & Temperature
-    document.getElementById('kpiVoltage').textContent = Number(latest.voltage).toFixed(3) + ' V';
-    document.getElementById('kpiTemp').textContent = Number(latest.temp_c).toFixed(1) + ' °C';
+    const voltEl = document.getElementById('kpiVoltage');
+    if (voltEl && latest.voltage !== undefined) voltEl.textContent = Number(latest.voltage).toFixed(3) + ' V';
+    
+    const tempEl = document.getElementById('kpiTemp');
+    if (tempEl && latest.temp_c !== undefined) tempEl.textContent = Number(latest.temp_c).toFixed(1) + ' °C';
 
     // Total Count & Buffer
-    document.getElementById('kpiTotalRows').textContent = stats.total_count;
-    document.getElementById('kpiTargetBuf').textContent = latest.target_buffer || 'FIELD';
-    document.getElementById('kpiOptimalPercent').textContent = stats.optimal_percentage + '%';
+    const rowsEl = document.getElementById('kpiTotalRows');
+    if (rowsEl && stats) rowsEl.textContent = stats.total_count;
+    
+    const bufEl = document.getElementById('kpiTargetBuf');
+    if (bufEl) bufEl.textContent = latest.target_buffer || 'FIELD';
+    
+    const optEl = document.getElementById('kpiOptimalPercent');
+    if (optEl && stats) optEl.textContent = stats.optimal_percentage + '%';
 
     // Active Session Badge
     const sessBadge = document.getElementById('kpiActiveSession');
@@ -277,6 +287,7 @@ function updateSoilBanner(latest) {
 
     const badge = document.getElementById('soilStatusBadge');
     const advisory = document.getElementById('soilAdvisoryText');
+    if (!badge || !advisory) return;
     const ph = parseFloat(latest.ph_ai);
 
     badge.className = 'soil-status-pill';
@@ -353,6 +364,7 @@ function updateTable(history) {
 
 function setOnlineStatus(online) {
     const badge = document.getElementById('systemStatusBadge');
+    if (!badge) return;
     if (online) {
         badge.innerHTML = '<span class="pulse-dot"></span> LIVE CONNECTED';
         badge.style.color = 'var(--color-green)';

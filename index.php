@@ -14,7 +14,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     
     <!-- Custom Stylesheet -->
-    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/dashboard.css?v=<?= time() ?>">
 </head>
 <body>
 
@@ -210,7 +210,7 @@
 </div>
 
 <!-- Custom Dashboard Logic -->
-<script src="js/dashboard.js"></script>
+<script src="js/dashboard.js?v=<?= time() ?>"></script>
 
 </body>
 </html>
