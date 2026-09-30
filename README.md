@@ -1,0 +1,296 @@
+# iSoil pH xAI: เครื่องวัดความเป็นกรด-ด่างของดินภาคสนามความแม่นยำสูงด้วยปัญญาประดิษฐ์ฝังตัว
+## (Development of a High-Accuracy Field-Portable Soil pH Meter with Explainable TinyML AI Error Compensation)
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Hardware: Seeed Wio Terminal](https://img.shields.io/badge/Hardware-Seeed%20Wio%20Terminal-blue)](https://www.seeedstudio.com/Wio-Terminal-p-4509.html)
+[![Core: ATSAMD51P19A](https://img.shields.io/badge/MCU-Cortex--M4F%20120MHz-blueviolet)](https://www.microchip.com/)
+[![TinyML: ANN 2-4-1 MLP](https://img.shields.io/badge/TinyML-ANN%202--4--1%20MLP-brightgreen)](#5-สถาปัตยกรรมปัญญาประดิษฐ์-tinyml-ann-2-4-1)
+[![Backend: PHP 8 + SQLite3](https://img.shields.io/badge/Backend-PHP%20%2B%20SQLite3-orange)](api/)
+[![UI: 60FPS Glassmorphism Dashboard](https://img.shields.io/badge/Dashboard-Chart.js%20%7C%20Glassmorphism-cyan)](index.php)
+
+> **แหล่งทุนสนับสนุนการวิจัย:** กองทุนวิจัย มหาวิทยาลัยราชภัฏรำไพพรรณี ประจำปีงบประมาณ พ.ศ. 2569  
+> **คณะผู้วิจัย:**  
+> 1. **อาจารย์ธนพัฒน์ ถิระวุฒิ** (หัวหน้าโครงการวิจัย) — อาจารย์ประจำหลักสูตร คบ.ฟิสิกส์  
+> 2. **ผู้ช่วยศาสตราจารย์ ดร.ชีวะ ทัศนา** (ผู้ร่วมวิจัย) — ผู้เชี่ยวชาญด้านระบบสมองกลฝังตัว ฟิสิกส์เกษตรดิจิทัล และปัญญาประดิษฐ์  
+> 3. **ผู้ช่วยศาสตราจารย์ ดร.นันทพร มูลรังษี** (ผู้ร่วมวิจัย) — ผู้เชี่ยวชาญด้านเคมีวิเคราะห์และการสร้างเครื่องมือวิเคราะห์  
+> **สังกัด:** คณะวิทยาศาสตร์และเทคโนโลยี มหาวิทยาลัยราชภัฏรำไพพรรณี จังหวัดจันทบุรี  
+
+---
+
+## 📖 สารบัญ (Table of Contents)
+1. [ภาพรวมโครงการและหลักการเชิงเกษตรฟิสิกส์](#1-ภาพรวมโครงการและหลักการเชิงเกษตรฟิสิกส์)
+2. [สถาปัตยกรรมระบบรวม (System Architecture)](#2-สถาปัตยกรรมระบบรวม-system-architecture)
+3. [โครงสร้างไฟล์และไดเรกทอรีของโครงการ](#3-โครงสร้างไฟล์และไดเรกทอรีของโครงการ)
+4. [ผังวงจรและการต่อประสานฮาร์ดแวร์](#4-ผังวงจรและการต่อประสานฮาร์ดแวร์)
+5. [สถาปัตยกรรมปัญญาประดิษฐ์ (TinyML ANN 2-4-1)](#5-สถาปัตยกรรมปัญญาประดิษฐ์-tinyml-ann-2-4-1)
+6. [การแสดงผลบนหน้าจอ Wio Terminal (iSoil pH xAI UI)](#6-การแสดงผลบนหน้าจอ-wio-terminal-isoil-ph-xai-ui)
+7. [ระบบฐานข้อมูลและแดชบอร์ดเว็บแอปพลิเคชัน](#7-ระบบฐานข้อมูลและแดชบอร์ดเว็บแอปพลิเคชัน)
+8. [คู่มือเริ่มต้นใช้งานอย่างรวดเร็ว (Quick Start)](#8-คู่มือเริ่มต้นใช้งานอย่างรวดเร็ว-quick-start)
+9. [การเชื่อมต่อ Git และการนำขึ้น GitHub](#9-การเชื่อมต่อ-git-และการนำขึ้น-github)
+10. [เอกสารอ้างอิงและคู่มือฉบับสมบูรณ์](#10-เอกสารอ้างอิงและคู่มือฉบับสมบูรณ์)
+
+---
+
+## 1. ภาพรวมโครงการและหลักการเชิงเกษตรฟิสิกส์
+
+ความเป็นกรด-ด่างของดิน (Soil pH) เป็นตัวชี้วัดที่มีอิทธิพลสูงสุดต่อความสามารถในการละลายและการดูดซึมธาตุอาหารของพืชเศรษฐกิจมูลค่าสูง เช่น ทุเรียน (*Durio zibethinus* Murr.) ในจังหวัดจันทบุรีและตราด ซึ่งต้องการระดับ pH ที่เหมาะสมระหว่าง **5.5 ถึง 6.5**
+
+เมื่อดินมีสภาพเป็นกรดรุนแรง (pH < 5.0) ไอออนของอะลูมิเนียม ($Al^{3+}$) จะละลายออกมาทำลายระบบรากพืช ทำให้รากเน่าและชะงักการเจริญเติบโต การวัดค่าภาคสนามโดยทั่วไปมักเกิดความคลาดเคลื่อนจาก:
+* **อิทธิพลของอุณหภูมิผันผวน:** Nernstian Slope แปรผันตามอุณหภูมิสัมบูรณ์ $S(T) = \frac{2.303 R T}{F}$ ($58.17\text{ mV/pH}$ ที่ $20^\circ\text{C}$ ถึง $63.13\text{ mV/pH}$ ที่ $45^\circ\text{C}$)
+* **ความไม่เป็นเชิงเส้นของเยื่อแก้ว (Electrode Asymmetry & Aging):** ความต้านทานภายในหัววัดสูงและเกิดการเสื่อมสภาพเมื่อสัมผัสอนุภาคดิน
+
+โครงการ **iSoil pH xAI** นำบอร์ด **Seeed Wio Terminal** ร่วมกับโมดูล **pH-4502C** ฝังแบบจำลองโครงข่ายประสาทเทียมขนาดเล็ก (TinyML Multi-Layer Perceptron) เพื่อชดเชยค่าความคลาดเคลื่อนแบบสองมิติ (แรงดันและอุณหภูมิ) พร้อมรายงานผลสู่ระบบฐานข้อมูลและ Web Dashboard แบบเรียลไทม์
+
+---
+
+## 2. สถาปัตยกรรมระบบรวม (System Architecture)
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        FIELD HARVESTING LAYER                          │
+│                                                                        │
+│   [ BNC Glass Probe ]                                                  │
+│          │                                                             │
+│          ▼                                                             │
+│   [ pH-4502C Sensor ] (V+ to +Vs 5V, Po to Pin 27, Zero Ref: 1.650V)   │
+│          │                                                             │
+│          ▼ (Analog Voltage 0-3.3V)                                     │
+│   [ INEX NX-WIO Board ]                                                │
+│          │                                                             │
+│          ▼                                                             │
+│   [ Seeed Studio Wio Terminal (ATSAMD51 120MHz Cortex-M4F) ]          │
+│   ├─ 12-bit ADC Trimmed Median Filter (30 samples)                     │
+│   ├─ Dual Engine: Traditional Nernst vs TinyML ANN (2-4-1)             │
+│   ├─ Local Storage: MicroSD Card Data Logger (/soil_ph_dataset.csv)    │
+│   └─ Visual Display: 2.4" TFT LCD (iSoil pH xAI Cyber Interface)       │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+               USB Serial / Wi-Fi Telemetry (115200 bps)
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                     DATA & EDGE APPLICATION LAYER                      │
+│                                                                        │
+│   [ tools/serial_bridge.py ] (Python Bridge Daemon)                    │
+│          │ HTTP POST                                                   │
+│          ▼                                                             │
+│   [ PHP Dual-Backend Engine (XAMPP / Apache) ]                         │
+│   ├─ api/post_data.php  (Data Ingestion Endpoint)                      │
+│   ├─ api/get_data.php   (Real-time JSON Polling Engine)                │
+│   └─ api/export_csv.php (One-Click Dataset CSV Streaming)               │
+│          │                                                             │
+│          ▼                                                             │
+│   [ SQLite3 Relational Database (data/soil_ph.db) ]                    │
+│   └─ Table: measurements (id, timestamp, voltage, temp, ph_ai, etc.)   │
+│          │                                                             │
+│          ▼                                                             │
+│   [ Responsive Web Portal (index.php + Chart.js + Glassmorphism UI) ]  │
+│   ├─ Real-time Dual Trend Chart (AI Compensated vs Traditional)        │
+│   ├─ Live Agronomy Diagnosis Banner & Lime Dosage Calculator           │
+│   ├─ KPI Summary Cards (Current pH, Sensor Voltage, Temperature)       │
+│   └─ Live Tabular Stream with Interactive Controls (Pause/Resume/Export│
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 3. โครงสร้างไฟล์และไดเรกทอรีของโครงการ
+
+```
+my_ph_wio/
+│
+├── README.md                      # [Root] สรุปภาพรวมโครงการ ผังวงจร โค้ด และคู่มือการติดตั้ง
+├── .gitignore                     # [Root] รายการไฟล์ที่ไม่รวมเข้า git (temp files, cache)
+├── my_ph_wio.ino                  # [Root] เฟิร์มแวร์หลัก Arduino C++ (TinyML ANN + LCD UI)
+├── index.php                      # [Root] หน้าเว็บแดชบอร์ดหลัก (Glassmorphism Cyber Theme)
+│
+├── api/                           # [บริการ REST API ฝั่งเซิร์ฟเวอร์]
+│   ├── db.php                     # คลาสเชื่อมต่อฐานข้อมูล SQLite3 และ Auto-Migration
+│   ├── post_data.php              # จุดรับข้อมูล Telemetry จาก Wio Terminal / Python
+│   ├── get_data.php               # จุดให้บริการข้อมูล Real-time JSON สำรวจ 30 จุดล่าสุด
+│   └── export_csv.php             # จุดบริการดาวน์โหลดฐานข้อมูลออกมาเป็นไฟล์ CSV
+│
+├── css/                           # [ชุดรูปแบบความสวยงามหน้าเว็บ]
+│   └── dashboard.css              # Glassmorphism Modern Styling พร้อมฟอนต์ Google Fonts
+│
+├── js/                            # [สคริปต์ควบคุมฝั่งผู้ใช้งานหน้าเว็บ]
+│   └── dashboard.js               # กลไก Polling ทุก 2 วิ และ Chart.js Live Rendering
+│
+├── data/                          # [พื้นที่จัดเก็บฐานข้อมูลและชุดข้อมูลวิจัย]
+│   ├── soil_ph.db                 # ฐานข้อมูล SQLite3 บันทึกประวัติการวัดภาคสนาม
+│   └── sample_soil_ph_dataset.csv # ไฟล์ชุดข้อมูลตัวอย่างความสัมพันธ์ V-T-pH
+│
+├── docs/                          # [เอกสารคู่มือทางวิชาการและการเผยแพร่]
+│   ├── AI_SOIL_PH_METER_MANUAL.md # คู่มือฉบับสมบูรณ์สำหรับผู้เริ่มต้น (Markdown 10 บท)
+│   ├── manual.pdf                 # เล่มคู่มือวิชาการจัดรูปเล่มมาตรฐาน มรภ.รำไพพรรณี (PDF)
+│   └── latex/                     # ไฟล์ต้นฉบับ XeLaTeX พร้อมคำสั่งคอมไพล์
+│       ├── manual.tex             # สคริปต์ต้นฉบับภาษาไทย TH Sarabun New
+│       └── ...                    # ไฟล์โครงสร้าง LaTeX
+│
+├── hardware/                      # [ข้อมูลวิศวกรรมฮาร์ดแวร์]
+│   ├── pinout_diagram.md          # ผังการต่อสายบอร์ด INEX NX-WIO และ Wio Terminal 40-Pin
+│   └── calibration_guide.md       # คู่มือการปรับทริมพอต Offset 1.650V และ Buffer สอบเทียบ
+│
+└── tools/                         # [เครื่องมือและสคริปต์ช่วยเหลือ]
+    ├── serial_bridge.py           # สคริปต์ Daemon เชื่อมโยง Serial สู่ PHP/SQLite3 อัตโนมัติ
+    └── read_telemetry.py          # สคริปต์อ่านค่าจากพอร์ตและบันทึก CSV แบบง่าย
+```
+
+---
+
+## 4. ผังวงจรและการต่อประสานฮาร์ดแวร์
+
+### 4.1 ตารางการเชื่อมต่อขาสัญญาณ
+| ขาบนโมดูล pH-4502C | ขาบนบอร์ด INEX NX-WIO | ขาบนบอร์ด Wio Terminal | หน้าที่การทำงาน |
+| :--- | :--- | :--- | :--- |
+| **`V+` / `VCC`** | **`+Vs (max 5V)`** | 5V Power Supply | ไฟเลี้ยงวงจรไอซี Op-Amp ภายในเซนเซอร์ |
+| **`G` / `GND`** | **`GND`** | Ground | กราวด์ร่วมของระบบ |
+| **`Po` (Analog)** | **ช่องเลข `[ 27 ]`** | **ขา `A0` (BCM 27)** | สัญญาณศักย์ไฟฟ้าเคมีจากเซลล์ (0 ถึง 3.3V) |
+| **`Do` / `To`** | *(ไม่ต้องต่อ)* | *(ไม่ได้ใช้งาน)* | ขาสัญญาณเปรียบเทียบและเซนเซอร์ความร้อนภายนอก |
+| **`ขั้ว BNC`** | ต่อเข้ากับหัววัดแก้ว | Probe Socket | รับสัญญาณประจุไฟฟ้าเคมีจากสารละลายดิน |
+
+### 4.2 การตั้งค่า Offset เพื่อความปลอดภัยของวงจร ADC
+* ไมโครคอนโทรลเลอร์ ATSAMD51 ทนแรงดันอินพุตสูงสุดที่ **3.30V**
+* ต้องปรับ **ทริมพอตตัวล่าง (ตัวติดกับพอร์ต BNC)** บนโมดูล pH-4502C ขณะลัดวงจรขั้ว BNC ให้แรงดันขา `Po` แสดงผลที่หน้าจอเท่ากับ **1.650V** (กึ่งกลางของช่วง 0–3.3V)
+* จะส่งผลให้ช่วงการวัด pH 0 ถึง 14 มีแรงดันแกว่งอยู่ระหว่าง **0.3V ถึง 3.0V** ปลอดภัยต่อวงจร ADC 100%
+
+---
+
+## 5. สถาปัตยกรรมปัญญาประดิษฐ์ (TinyML ANN 2-4-1)
+
+โครงข่ายประสาทเทียมแบบป้อนตรง (Multilayer Perceptron: MLP) ถูกออกแบบให้มีขนาดกะทัดรัด (Low Compute Footprint) เพื่อรันบนชิป Cortex-M4F 120MHz ได้ด้วยความเร็วระดับ 60 FPS:
+
+```
+[ Input Layer ]                 [ Hidden Layer ]                [ Output Layer ]
+(2 คุณลักษณะนำเข้า)             (4 โหนด Dense + ReLU)           (1 โหนดประเมินผล)
+
+  ศักย์ไฟฟ้า V (โวลต์) ───┬───────> [ h0 = ReLU(W0·x + b0) ] ──┬───>  pH ที่ชดเชยแล้ว
+                         │   ┌───> [ h1 = ReLU(W1·x + b1) ] ──┤      (pH_AI)
+  อุณหภูมิ T (°C)      ──┴───┼───> [ h2 = ReLU(W2·x + b2) ] ──┤
+                             └───> [ h3 = ReLU(W3·x + b3) ] ──┘
+```
+
+* **Hidden Layer Activation:** $\text{ReLU}(z) = \max(0, z)$
+* **Output Formulation:**
+  $$\text{pH}_{\text{AI}} = b_{\text{out}} + \sum_{i=0}^3 (h_i \cdot W_{\text{out}, i})$$
+* ได้รับการปรับแต่งค่าน้ำหนักเพื่อหักล้างผลของความไม่เป็นเชิงเส้นและอุณหภูมิที่เบี่ยงเบนจากจุดอ้างอิง $25^\circ\text{C}$
+
+---
+
+## 6. การแสดงผลบนหน้าจอ Wio Terminal (iSoil pH xAI UI)
+
+```
+┌───────────────────────────────────────────────────────────────┐
+│ iSoil pH xAI   [ANN 2-4-1 MLP]                     [SD: REC ●]│
+├──────────────────────────────────┬────────────────────────────┤
+│  AI COMPENSATED pH               │ AI MODEL PARAMS            │
+│                                  │ NERNST : 7.01 (TextSize 2) │
+│       6.94  (TextSize 6 Neon)    │ TEMP   : 25.0 C (Cyan)     │
+│                                  │ BUFFER : BUF 7.00 (Gold)   │
+│  RAW CELL: 1.661V (TextSize 2)   │ RECS   : 148               │
+├──────────────────────────────────┴────────────────────────────┤
+│ * OPTIMAL DURIAN                 (TextSize 2 Neon Green)      │
+│ EXCELLENT: Ideal Soil Health for Maximum Yield                │
+├───────────────────────────────────────────────────────────────┤
+│ TREND : AI (Green) vs Traditional Nernst (Orange)             │
+│ [=================== Real-time Dual Graph ===================]│
+└───────────────────────────────────────────────────────────────┘
+```
+
+* **Header Bar:** ชื่อระบบ `iSoil` (ทอง) `pH` (เขียว) `xAI` (ฟ้า) พร้อมป้ายรุ่น `[ANN 2-4-1 MLP]`
+* **Huge pH Readout:** แสดงผลค่า pH ขนาดใหญ่พิเศษ **TextSize 6** พร้อมเปลี่ยนสีนีออนตามสภาพดิน (แดง/เขียว/ฟ้า/ชมพู)
+* **Raw Cell Potential:** ตัวเลขวัดจริงจากหัววัดขนาด **TextSize 2** สีเหลืองทอง (`1.661V`)
+* **Soil Agronomy Card:** แถบวินิจฉัยดินขนาดใหญ่เต็มความกว้างจอ แบ่ง 4 สภาวะตามหลักพืชสวน:
+  1. `! VERY ACIDIC SOIL` (สีแดง) — เตือนภัยกรดจัด โลหะหนักเป็นพิษ แนะนำให้ใส่ปูนโดโลไมต์
+  2. `* OPTIMAL DURIAN` (สีเขียวนีออน) — ช่วงที่สมบูรณ์ที่สุดสำหรับทุเรียน (pH 5.5 - 6.5)
+  3. `= NEUTRAL SOIL` (สีฟ้าไซแอน) — ดินเป็นกลาง (pH 6.6 - 7.5) เหมาะกับพืชไร่ทั่วไป
+  4. `^ ALKALINE SOIL` (สีม่วงชมพู) — ดินเป็นด่าง แนะนำเติมปุ๋ยอินทรีย์และปรับธาตุสังกะสี/เหล็ก
+* **Live Graph:** กราฟเส้น 2 สี เปรียบเทียบระหว่างโมเดล **AI (สีเขียว)** และ **Nernst แบบดั้งเดิม (สีส้ม)**
+
+---
+
+## 7. ระบบฐานข้อมูลและแดชบอร์ดเว็บแอปพลิเคชัน
+
+### โครงสร้างตารางฐานข้อมูล SQLite3 (`data/soil_ph.db`)
+```sql
+CREATE TABLE IF NOT EXISTS measurements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    voltage REAL NOT NULL,
+    temperature REAL NOT NULL,
+    ph_traditional REAL NOT NULL,
+    ph_ai REAL NOT NULL,
+    target_buffer TEXT DEFAULT 'FIELD',
+    device_id TEXT DEFAULT 'WIO-SAMD51-01'
+);
+CREATE INDEX IF NOT EXISTS idx_timestamp ON measurements(timestamp);
+```
+
+### การเปิดใช้งานแดชบอร์ดเว็บ
+เมื่อติดตั้งในโฟลเดอร์ XAMPP สามารถเปิดเบราว์เซอร์เข้าสู่แดชบอร์ดได้ที่:
+```
+http://localhost/06_AI_Research/my_ph_wio/
+```
+
+---
+
+## 8. คู่มือเริ่มต้นใช้งานอย่างรวดเร็ว (Quick Start)
+
+### ขั้นตอนที่ 1: คอมไพล์และอัปโหลดโปรแกรมลงบอร์ด Wio Terminal
+```bash
+# คอมไพล์โค้ด
+arduino-cli compile --fqbn Seeeduino:samd:seeed_wio_terminal .
+
+# อัปโหลดเฟิร์มแวร์ลงบอร์ด
+arduino-cli upload -p /dev/cu.usbmodem1101 --fqbn Seeeduino:samd:seeed_wio_terminal .
+```
+
+### ขั้นตอนที่ 2: รันโปรแกรมเชื่อมต่อข้อมูล Serial สู่ Web Database
+```bash
+python3 tools/serial_bridge.py
+```
+
+### ขั้นตอนที่ 3: เปิดหน้าเว็บแดชบอร์ดและควบคุมการทำงาน
+1. เข้าไปที่ `http://localhost/06_AI_Research/my_ph_wio/`
+2. ปุ่มควบคุม 5 ทิศทางบน Wio Terminal:
+   * **โยกขึ้น / ลง:** เปลี่ยนบัฟเฟอร์อ้างอิง (`BUF 4.01`, `BUF 7.00`, `BUF 10.01`, `SOIL SMP`)
+   * **โยกซ้าย / ขวา:** ปรับอุณหภูมิสารละลายทดสอบ ($20^\circ\text{C}$ ถึง $50^\circ\text{C}$)
+   * **กดปุ่มตรงกลาง (Press):** บันทึกภาพข้อมูลเฉพาะจุด (Manual Snapshot) ลง SD Card ทันที
+
+---
+
+## 9. การเชื่อมต่อ Git และการนำขึ้น GitHub
+
+สามารถนำซอร์สโค้ดและเอกสารทั้งหมดขึ้นสู่คลังข้อมูล GitHub ได้ตามคำสั่งด้านล่างนี้:
+
+### กรณีเลือก Repository: `Tsanaphy2023/isoil-ph-xai`
+```bash
+git init
+git add .
+git commit -m "feat: complete iSoil pH xAI firmware, web dashboard, and academic manual"
+git branch -M main
+git remote add origin https://github.com/Tsanaphy2023/isoil-ph-xai.git
+git push -u origin main
+```
+
+### หรือกรณีเลือก Repository: `TsanaPhysics/iSoil-pH-xAI`
+```bash
+git init
+git add .
+git commit -m "feat: complete iSoil pH xAI firmware, web dashboard, and academic manual"
+git branch -M main
+git remote add origin https://github.com/TsanaPhysics/iSoil-pH-xAI.git
+git push -u origin main
+```
+
+*(หรือสามารถเพิ่ม Remote ทั้งสองที่ได้โดยใช้ `git remote add upstream https://github.com/TsanaPhysics/iSoil-pH-xAI.git`)*
+
+---
+
+## 10. เอกสารอ้างอิงและคู่มือฉบับสมบูรณ์
+
+* 📄 **คู่มือปฏิบัติการฉบับสมบูรณ์สำหรับผู้เริ่มต้น (Markdown):** [docs/AI_SOIL_PH_METER_MANUAL.md](docs/AI_SOIL_PH_METER_MANUAL.md)
+* 📕 **คู่มือฉบับพิมพ์รูปเล่มมาตรฐาน มรภ.รำไพพรรณี (PDF):** [docs/manual.pdf](docs/manual.pdf)
+* 🔧 **คู่มือผังขาฮาร์ดแวร์และการต่อวงจร:** [hardware/pinout_diagram.md](hardware/pinout_diagram.md)
+* ⚖️ **คู่มือขั้นตอนการสอบเทียบและตั้งศูนย์:** [hardware/calibration_guide.md](hardware/calibration_guide.md)
+* 📊 **ตัวอย่างชุดข้อมูลวิจัย:** [data/sample_soil_ph_dataset.csv](data/sample_soil_ph_dataset.csv)

@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# LaTeX temp files
+docs/latex/*.aux
+docs/latex/*.log
+docs/latex/*.out
+docs/latex/*.toc
+
+# Python
+__pycache__/
+*.pyc
+
+# Local runtime logs
+*.log
+
+# Keep sample dataset, but exclude local huge live database if needed (or keep small db)

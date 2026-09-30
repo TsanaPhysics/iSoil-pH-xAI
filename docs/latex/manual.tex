@@ -1,0 +1,331 @@
+\documentclass[12pt,a4paper,oneside]{report}
+
+\usepackage{geometry}
+\geometry{
+    top=1.5in,
+    bottom=1.0in,
+    left=1.5in,
+    right=1.0in
+}
+
+\usepackage{fontspec}
+\usepackage{xunicode}
+\usepackage{xltxtra}
+
+\defaultfontfeatures{Mapping=tex-text}
+\setmainfont{THSarabunNew.ttf}[
+    Path = /Users/chewathassana/Library/Fonts/,
+    BoldFont = {THSarabun Bold.ttf},
+    ItalicFont = {THSarabun Italic.ttf},
+    BoldItalicFont = {THSarabun BoldItalic.ttf}
+]
+
+\XeTeXlinebreaklocale "th_TH"
+\XeTeXlinebreakskip = 0pt plus 1pt
+
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+
+\usepackage{tcolorbox}
+\tcbuselibrary{skins,breakable}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,positioning,calc,fit,backgrounds}
+\usepackage{titlesec}
+\usepackage{caption}
+
+% กำหนดค่าสีตามอัตลักษณ์มหาวิทยาลัยราชภัฏรำไพพรรณีและธีมวิจัย
+\definecolor{rbruNavy}{RGB}{15, 30, 55}
+\definecolor{rbruGold}{RGB}{205, 155, 30}
+\definecolor{rbruSlate}{RGB}{70, 85, 105}
+\definecolor{rbruGreen}{RGB}{20, 130, 50}
+\definecolor{rbruCodeBg}{RGB}{245, 248, 252}
+\definecolor{isoilCyan}{RGB}{0, 180, 220}
+
+% การตั้งค่าคำบรรยายภาพและตารางตามมาตรฐาน RBRU (ห้ามมีเครื่องหมายทวิภาค)
+\DeclareCaptionLabelSeparator{thaisep}{\quad}
+\captionsetup{labelsep=thaisep}
+\renewcommand{\figurename}{\mbox{ภาพที่}}
+\renewcommand{\tablename}{\mbox{ตารางที่}}
+
+\AtBeginDocument{
+    \gdef\figurename{\mbox{ภาพที่}}
+    \gdef\tablename{\mbox{ตารางที่}}
+    \captionsetup[figure]{name={\mbox{ภาพที่}}, font={small}}
+    \captionsetup[table]{name={\mbox{ตารางที่}}, font={small}, position=top}
+}
+
+% สไตล์หัวบทวิชาการหรูหรา
+\newcommand{\rbruchapterbanner}[1]{%
+    \begin{tcolorbox}[
+        enhanced,
+        colback=rbruNavy,
+        colframe=rbruGold,
+        arc=4mm,
+        boxrule=1.5pt,
+        left=6mm, right=6mm, top=6mm, bottom=6mm
+    ]
+    \raggedright
+    {\color{rbruGold}\fontsize{14}{16}\selectfont\textbf{คู่มือปฏิบัติการวิจัยและเทคโนโลยีปัญญาประดิษฐ์ฝังตัว}}\par\vspace{2mm}
+    {\color{white}\fontsize{22}{26}\selectfont\textbf{บทที่ \thechapter\quad #1}}
+    \end{tcolorbox}
+}
+
+\titleformat{\chapter}[block]{\normalfont}{}{0pt}{\rbruchapterbanner}
+\titlespacing*{\chapter}{0pt}{-10pt}{20pt}
+
+\titleformat{\section}[block]{\normalfont\fontsize{16}{20}\selectfont\bfseries\color{rbruNavy}}{\thesection\quad}{0pt}{}
+\titleformat{\subsection}[block]{\normalfont\fontsize{14}{18}\selectfont\bfseries\color{rbruSlate}}{\thesubsection\quad}{0pt}{}
+
+\setlength{\parindent}{1.0cm}
+\setlength{\parskip}{4pt}
+
+\begin{document}
+
+% ---------------------- หน้าปกเอกสารทางวิชาการ ----------------------
+\begin{titlepage}
+\begin{tcolorbox}[
+    enhanced,
+    colback=white,
+    colframe=rbruNavy,
+    boxrule=2pt,
+    arc=0mm,
+    height=\textheight,
+    interior style={left color=white, right color=rbruCodeBg}
+]
+\centering
+\vspace*{0.8cm}
+{\color{rbruGold}\rule{0.85\textwidth}{3pt}}\par\vspace{5mm}
+{\fontsize{26}{30}\selectfont\textbf{\color{rbruNavy}คู่มือฉบับสมบูรณ์สำหรับผู้เริ่มต้น}}\par\vspace{3mm}
+{\fontsize{20}{24}\selectfont\textbf{\color{isoilCyan}ระบบ iSoil pH xAI}}\par\vspace{2mm}
+{\fontsize{16}{20}\selectfont\textbf{\color{rbruSlate}เครื่องวัดความเป็นกรด-ด่างของดินภาคสนามความแม่นยำสูง}}\par
+{\fontsize{15}{19}\selectfont\textbf{\color{rbruGreen}ด้วยการชดเชยความคลาดเคลื่อนโดยปัญญาประดิษฐ์ฝังตัว (TinyML)}}\par\vspace{3mm}
+{\fontsize{12}{15}\selectfont\textit{Development of a High-Accuracy Field-Portable Soil pH Meter Prototype\\with Explainable TinyML AI Error Compensation}}\par\vspace{5mm}
+{\color{rbruGold}\rule{0.85\textwidth}{1.5pt}}\par\vspace{1.0cm}
+
+\begin{tikzpicture}[scale=0.85]
+    \draw[fill=rbruNavy!10, draw=rbruNavy, line width=1.5pt, rounded corners=6mm] (0,0) rectangle (7.5,4.8);
+    \node at (3.75,4.1) {\textbf{\color{rbruNavy}iSoil pH xAI [ANN 2-4-1 MLP]}};
+    \draw[fill=white, draw=rbruGold, line width=1pt, rounded corners=3mm] (0.8,0.8) rectangle (6.7,3.5);
+    \node at (3.75,2.7) {\fontsize{28}{32}\selectfont\textbf{\color{rbruGreen}pH 6.85}};
+    \node at (3.75,1.8) {\fontsize{12}{14}\selectfont\textbf{\color{rbruGold}RAW CELL: 1.661 V}};
+    \node at (3.75,1.2) {\fontsize{10}{12}\selectfont\textbf{\color{rbruSlate}OPTIMAL DURIAN / pH 5.5-6.5}};
+    \draw[line width=1.5pt, color=rbruNavy] (7.5,2.4) -- (9.0,2.4);
+    \draw[fill=rbruSlate!20, draw=rbruSlate, line width=1pt] (9.0,1.7) rectangle (11.0,3.2);
+    \node at (10.0,2.4) {\fontsize{10}{12}\selectfont\textbf{BNC PROBE}};
+\end{tikzpicture}
+
+\vfill
+
+{\fontsize{14}{17}\selectfont\textbf{คณะผู้วิจัย}}\par\vspace{2mm}
+{\fontsize{13}{16}\selectfont
+อาจารย์ธนพัฒน์ ถิระวุฒิ\\
+ผู้ช่วยศาสตราจารย์ ดร.ชีวะ ทัศนา\\
+ผู้ช่วยศาสตราจารย์ ดร.นันทพร มูลรังษี
+}\par\vspace{6mm}
+
+{\fontsize{12}{15}\selectfont
+โครงการวิจัยภายใต้กองทุนวิจัย มหาวิทยาลัยราชภัฏรำไพพรรณี\\
+ประจำปีงบประมาณ พ.ศ. 2569\\
+คณะวิทยาศาสตร์และเทคโนโลยี มหาวิทยาลัยราชภัฏรำไพพรรณี
+}
+\vspace*{0.6cm}
+\end{tcolorbox}
+\end{titlepage}
+
+% ---------------------- บทที่ 1 ----------------------
+\chapter{บทนำและหลักการเกษตรฟิสิกส์}
+
+ความเป็นกรด-ด่างของดิน (Soil pH) เป็นดัชนีชี้วัดทางเคมีฟิสิกส์ที่กำหนดความสามารถในการละลายและการดูดซึมธาตุอาหารของพืช โดยเฉพาะอย่างยิ่งในพื้นที่เกษตรกรรมของจังหวัดจันทบุรีและจังหวัดตราด ซึ่งเป็นแหล่งผลิตพืชเศรษฐกิจสำคัญของประเทศ ได้แก่ ทุเรียน (\textit{Durio zibethinus} Murr.) ดินส่วนใหญ่ในเขตนี้มักเผชิญภาวะดินกรดรุนแรงเนื่องจากมีปริมาณน้ำฝนสะสมสูงตลอดทั้งปี
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.85, auto, >=stealth]
+    \node[draw=rbruNavy, fill=rbruCodeBg, rounded corners, inner sep=3mm, align=center] (input) at (0,0) {\textbf{สารละลายดิน}\\\fontsize{9}{11}\selectfont (Soil Slurry 1:1)};
+    \node[draw=rbruGold, fill=white, rounded corners, inner sep=3mm, align=center] (sensor) at (3.8,0) {\textbf{หัววัดแก้ว BNC}\\\fontsize{9}{11}\selectfont (Glass Electrode)};
+    \node[draw=rbruSlate, fill=white, rounded corners, inner sep=3mm, align=center] (amp) at (7.8,0) {\textbf{pH-4502C}\\\fontsize{9}{11}\selectfont (Offset 1.650V)};
+    \node[draw=rbruGreen, fill=rbruGreen!10, rounded corners, inner sep=3mm, align=center] (mcu) at (11.8,0) {\textbf{Wio Terminal}\\\fontsize{9}{11}\selectfont (TinyML ANN)};
+
+    \draw[->, line width=1.3pt] (input) -- node[above]{\fontsize{8}{10}\selectfont ไอออน $H^+$} (sensor);
+    \draw[->, line width=1.3pt] (sensor) -- node[above]{\fontsize{8}{10}\selectfont mV ศักย์} (amp);
+    \draw[->, line width=1.3pt] (amp) -- node[above]{\fontsize{8}{10}\selectfont 0 - 3.3V} (mcu);
+\end{tikzpicture}
+\caption{ผังการทำงานเชิงฟิสิกส์ของการแปลงความเข้มข้นไฮโดรเจนไอออนสู่การคำนวณด้วยปัญญาประดิษฐ์}
+\label{fig:system_overview}
+\end{figure}
+
+เมื่อดินมีค่า pH ต่ำกว่า 5.0 ไอออนของโลหะหนักโดยเฉพาะอะลูมิเนียม ($Al^{3+}$) จะละลายออกมาเป็นพิษต่อระบบราก ขัดขวางการเจริญเติบโต และทำให้ผลผลิตตกต่ำ ในทางกลับกัน ค่า pH ที่เหมาะสมที่สุดสำหรับต้นทุเรียนจะอยู่ในช่วง 5.5 ถึง 6.5 ซึ่งเป็นระดับที่ธาตุอาหารหลักและธาตุอาหารรองละลายออกมาได้อย่างสมดุล
+
+% ---------------------- บทที่ 2 ----------------------
+\chapter{รากฐานทางทฤษฎีและสมการเนิร์นสต์}
+
+การตรวจวัดค่าความเป็นกรด-ด่างด้วยวิธีโพเทนชิออเมตริก (Potentiometric Method) อาศัยความต่างศักย์ไฟฟ้าระหว่างขั้วไฟฟ้าบ่งชี้เยื่อแก้ว (Glass Indicator Electrode) และขั้วไฟฟ้าอ้างอิง (Reference Electrode) ซึ่งอธิบายได้ด้วยสมการเนิร์นสต์ (Nernst Equation) ดังนี้
+
+\begin{equation}
+E = E^0 - \frac{2.303 R T}{n F} \cdot \text{pH}
+\end{equation}
+
+เมื่อกำหนดให้
+\begin{itemize}
+    \item $E$ คือ ศักย์ไฟฟ้าที่อ่านได้จากเซลล์เคมีไฟฟ้า มีหน่วยเป็นโวลต์ (V)
+    \item $E^0$ คือ ศักย์ไฟฟ้ามาตรฐานของเซลล์ มีหน่วยเป็นโวลต์ (V)
+    \item $R$ คือ ค่าคงที่สากลของแก๊ส ($8.314\text{ J}\cdot\text{mol}^{-1}\cdot\text{K}^{-1}$)
+    \item $T$ คือ อุณหภูมิสัมบูรณ์ของสารละลาย มีหน่วยเป็นเคลวิน (K)
+    \item $n$ คือ จำนวนอิเล็กตรอนในปฏิกิริยา ซึ่งมีค่าเท่ากับ 1 สำหรับไฮโดรเจนไอออน
+    \item $F$ คือ ค่าคงที่ฟาราเดย์ ($96,485\text{ C}\cdot\text{mol}^{-1}$)
+\end{itemize}
+
+\begin{table}[htbp]
+\centering
+\caption{ค่าความชันเนิร์นสเตียนตามทฤษฎีที่ระดับอุณหภูมิต่างๆ}
+\label{tab:nernst_slope}
+\begin{tabularx}{\textwidth}{cccY}
+\toprule
+\textbf{อุณหภูมิ ($^\circ\text{C}$)} & \textbf{อุณหภูมิสัมบูรณ์ (K)} & \textbf{ความชัน ($S$, mV/pH)} & \textbf{ลักษณะการนำไปใช้งาน} \\
+\midrule
+20.0 & 293.15 & 58.17 & สภาวะห้องทดลองควบคุมอุณหภูมิ \\
+25.0 & 298.15 & 59.16 & อุณหภูมิมาตรฐานสากลอ้างอิง \\
+30.0 & 303.15 & 60.15 & สภาวะแปลงเกษตรภาคสนามช่วงเช้า \\
+35.0 & 308.15 & 61.14 & สภาวะแปลงเกษตรภาคสนามกลางแจ้ง \\
+40.0 & 313.15 & 62.13 & สภาวะแดดจัดในดินภาคตะวันออก \\
+45.0 & 318.15 & 63.13 & สภาวะทดสอบความทนทานขีดสุด \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+จากตารางจะเห็นได้ชัดเจนว่า หากไม่มีการชดเชยผลของอุณหภูมิ ($T$) และความไม่เป็นเชิงเส้นของเยื่อแก้ว การวัดค่าภาคสนามจะคลาดเคลื่อนสูงมาก โครงการวิจัยนี้จึงนำแบบจำลองโครงข่ายประสาทเทียม (ANN) มาทำหน้าที่เป็นฟังก์ชันผกผันเพื่อชดเชยความคลาดเคลื่อนดังกล่าว
+
+% ---------------------- บทที่ 3 ----------------------
+\chapter{ฮาร์ดแวร์ ผังวงจร และการสร้างต้นแบบ}
+
+ต้นแบบเครื่องวัดค่าความเป็นกรด-ด่างของดินภาคสนามประกอบด้วย 3 ส่วนหลัก ได้แก่ บอร์ดไมโครคอนโทรลเลอร์ Seeed Studio Wio Terminal บอร์ดทดลอง INEX NX-WIO และชุดโมดูลวัดค่า pH-4502C พร้อมโพรบแก้ว
+
+\begin{table}[htbp]
+\centering
+\caption{การต่อสายวงจรระหว่างเซนเซอร์ pH-4502C กับบอร์ด INEX NX-WIO}
+\label{tab:wiring}
+\begin{tabularx}{\textwidth}{p{3.5cm}p{4.0cm}Y}
+\toprule
+\textbf{ขาของโมดูล pH-4502C} & \textbf{ตำแหน่งบนบอร์ด NX-WIO} & \textbf{หน้าที่และความสำคัญเชิงวิศวกรรม} \\
+\midrule
+V+ (VCC) & ขั้วไฟ +Vs (max 5V) & จ่ายไฟเลี้ยง 5.0V ให้วงจรขยายสัญญาณ Op-Amp \\
+G (GND)  & ขั้วกราวด์ GND       & กราวด์ร่วมของระบบเพื่อความเสถียรของสัญญาณ \\
+Po (Analog Out) & ช่องเสียบเลข [27] (ขา A0) & สัญญาณแรงดันแอนะล็อกเชื่อมต่อเข้าสู่ ADC 12 บิต \\
+ขั้วต่อ BNC & เสียบเข้าหัวโพรบแก้ว & รับสัญญาณความต่างศักย์ระดับมิลลิโวลต์จากหัววัด \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{tcolorbox}[enhanced, colback=yellow!10, colframe=red!70!black, arc=3mm, title=\textbf{ข้อควรระวังสำคัญด้านความปลอดภัยของแรงดันไฟฟ้า}]
+ชิปประมวลผล ATSAMD51 บนบอร์ด Wio Terminal ทำงานที่ระดับแรงดันลอจิก 3.3 โวลต์เท่านั้น ดังนั้นผู้ปฏิบัติการต้องหมุนปรับทริมพอตตัวล่าง (Offset Trimmer) ของโมดูล pH-4502C ให้จ่ายแรงดันที่สภาวะ pH 7.00 เท่ากับ 1.650 โวลต์เสมอ เพื่อป้องกันไม่ให้แรงดันเกิน 3.3 โวลต์เข้าสู่ขา ADC ของไมโครคอนโทรลเลอร์
+\end{tcolorbox}
+
+% ---------------------- บทที่ 4 ----------------------
+\chapter{สถาปัตยกรรมปัญญาประดิษฐ์ฝังตัว (TinyML ANN 2-4-1)}
+
+แบบจำลองปัญญาประดิษฐ์ในระบบ iSoil pH xAI เป็นโครงข่ายประสาทเทียมแบบ Multi-Layer Perceptron (MLP) โครงสร้าง 2-4-1 ที่ได้รับการแปลงรูปให้ทำงานบนชิป ARM Cortex-M4F 120MHz ได้อย่างรวดเร็วและใช้หน่วยความจำต่ำมาก
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.85, auto, >=stealth]
+    \node[draw=rbruNavy, fill=white, circle, inner sep=2mm] (in1) at (0, 2.0) {\small $V$};
+    \node[draw=rbruNavy, fill=white, circle, inner sep=2mm] (in2) at (0, -2.0) {\small $T$};
+
+    \node[draw=rbruGold, fill=rbruCodeBg, circle, inner sep=2mm] (h0) at (4, 3.0) {\small $h_0$};
+    \node[draw=rbruGold, fill=rbruCodeBg, circle, inner sep=2mm] (h1) at (4, 1.0) {\small $h_1$};
+    \node[draw=rbruGold, fill=rbruCodeBg, circle, inner sep=2mm] (h2) at (4, -1.0) {\small $h_2$};
+    \node[draw=rbruGold, fill=rbruCodeBg, circle, inner sep=2mm] (h3) at (4, -3.0) {\small $h_3$};
+
+    \node[draw=rbruGreen, fill=rbruGreen!20, circle, inner sep=2mm] (out) at (8, 0) {\small $\text{pH}_{\text{AI}}$};
+
+    \foreach \i in {in1, in2}
+        \foreach \j in {h0, h1, h2, h3}
+            \draw[->, line width=0.8pt, color=rbruSlate!70] (\i) -- (\j);
+
+    \foreach \j in {h0, h1, h2, h3}
+        \draw[->, line width=0.8pt, color=rbruGreen!80] (\j) -- (out);
+
+    \node at (0, 3.2) {\textbf{\color{rbruNavy}Input Layer}};
+    \node at (4, 4.0) {\textbf{\color{rbruGold}Hidden Layer (ReLU)}};
+    \node at (8, 1.2) {\textbf{\color{rbruGreen}Output Layer}};
+\end{tikzpicture}
+\caption{สถาปัตยกรรมโครงข่ายประสาทเทียม ANN 2-4-1 ฝังตัวบน Wio Terminal}
+\label{fig:ann_arch}
+\end{figure}
+
+สมการคณิตศาสตร์ในชั้นซ่อนเร้นใช้ฟังก์ชันกระตุ้นแบบ ReLU $\max(0, z)$ เพื่อขจัดความไม่เป็นเชิงเส้นและลดเวลาการคำนวณในระดับไมโครวินาที:
+\begin{equation}
+h_i = \max\left(0, b_i + W_{i,0} \cdot V + W_{i,1} \cdot (T - 25.0)\right) \quad (i = 0, 1, 2, 3)
+\end{equation}
+\begin{equation}
+\text{pH}_{\text{AI}} = b_{\text{out}} + \sum_{i=0}^3 (h_i \cdot W_{\text{out}, i})
+\end{equation}
+
+% ---------------------- บทที่ 5 ----------------------
+\chapter{ระบบฐานข้อมูลและแดชบอร์ดเว็บแอปพลิเคชัน}
+
+เพื่อสนับสนุนการทำเกษตรแม่นยำและการรายงานผลวิจัย ระบบได้เชื่อมโยง Wio Terminal เข้ากับแดชบอร์ดเว็บแอปพลิเคชันและฐานข้อมูลแบบเรียลไทม์:
+\begin{enumerate}
+    \item \textbf{สะพานส่งข้อมูล (Serial Bridge Daemon)} ใช้สคริปต์ Python (\texttt{tools/serial\_bridge.py}) อ่านข้อมูลจากพอร์ต USB Serial แล้วส่งต่อผ่าน HTTP POST ไปยังเซิร์ฟเวอร์
+    \item \textbf{ฐานข้อมูล SQLite3} จัดเก็บประวัติการวัดค่าที่ไฟล์ \texttt{data/soil\_ph.db} ซึ่งมีดัชนีเวลาเพื่อการค้นคืนข้อมูลที่รวดเร็ว
+    \item \textbf{เว็บพอร์ทัลความเร็วสูง} พัฒนาด้วย PHP และ JavaScript (Chart.js) แสดงผลกราฟเปรียบเทียบสองมิติ บัตรดัชนีสุขภาพดิน และปุ่มส่งออกข้อมูลเป็น CSV ทันที
+\end{enumerate}
+
+% ---------------------- บทที่ 6 ----------------------
+\chapter{ขั้นตอนปฏิบัติการทดสอบและการใช้งานภาคสนาม}
+
+\section{การเตรียมตัวอย่างดินตามระเบียบวิธีวิจัย}
+การเตรียมตัวอย่างดินเพื่อตรวจวัดภาคสนามให้ได้ผลแม่นยำสูงสุด มีขั้นตอนดำเนินการดังนี้
+\begin{enumerate}
+    \item สุ่มเก็บตัวอย่างดินบนที่ระดับความลึก 0 ถึง 15 เซนติเมตร จากแปลงเกษตร 5 ถึง 10 จุด แล้วนำมารวมกันเป็นตัวแทนของแปลง
+    \item ผึ่งดินให้แห้งในที่ร่ม บดให้ละเอียดแล้วร่อนผ่านตะแกรงขนาดตา 2 มิลลิเมตร
+    \item ชั่งดิน 20 กรัม ผสมกับน้ำกลั่น 20 มิลลิลิตร (อัตราส่วน 1 ต่อ 1) หรือ 50 มิลลิลิตร (อัตราส่วน 1 ต่อ 2.5) ลงในขวดทดลอง
+    \item เขย่าหรือกวนสารละลายเป็นเวลา 30 นาที แล้วตั้งทิ้งไว้ให้ดินตกตะกอน 30 นาที
+    \item จุ่มหัวโพรบแก้วลงในสารละลายส่วนใส แล้วกดปุ่มบันทึกค่าลงใน MicroSD Card
+\end{enumerate}
+
+\section{เกณฑ์การวินิจฉัยสุขภาพดินเพื่อการเพาะปลูกทุเรียน}
+ระบบซอฟต์แวร์บนตัวเครื่องจะทำการประเมินค่าความเป็นกรด-ด่างและแสดงสถานะให้เกษตรกรทราบทันทีบนหน้าจอ LCD ดังนี้
+\begin{itemize}
+    \item \textbf{pH น้อยกว่า 5.0 (VERY ACIDIC)} ดินมีสภาพกรดรุนแรง ธาตุอาหารหลักถูกตรึง ต้องใส่ปูนโดโลไมต์ปรับสภาพ
+    \item \textbf{pH 5.5 ถึง 6.5 (OPTIMAL DURIAN)} ดินมีความสมบูรณ์เหมาะสมที่สุดสำหรับการเจริญเติบโตของทุเรียน
+    \item \textbf{pH 6.6 ถึง 7.5 (NEUTRAL SOIL)} ดินมีสภาพเป็นกลาง เหมาะสำหรับพืชไร่และพืชสวนทั่วไป
+    \item \textbf{pH มากกว่า 7.5 (ALKALINE SOIL)} ดินเป็นด่าง พืชอาจขาดธาตุสังกะสีและเหล็ก ควรใส่ปุ๋ยอินทรีย์
+\end{itemize}
+
+% ---------------------- ประวัติคณะผู้วิจัย ----------------------
+\chapter*{ประวัติคณะผู้วิจัย}
+\addcontentsline{toc}{chapter}{ประวัติคณะผู้วิจัย}
+
+\begin{tcolorbox}[enhanced, colback=white, colframe=rbruNavy, arc=3mm, boxrule=1pt]
+\textbf{\large ผู้ช่วยศาสตราจารย์ ดร.ชีวะ ทัศนา (Co-Principal Investigator)}\\
+สาขาวิชาฟิสิกส์ คณะวิทยาศาสตร์และเทคโนโลยี มหาวิทยาลัยราชภัฏรำไพพรรณี\\
+\textbf{คุณวุฒิการศึกษา} ปร.ด. (ฟิสิกส์ประยุกต์) สจล. พ.ศ. 2555, วท.ม. (ฟิสิกส์ประยุกต์) สจล. พ.ศ. 2549, วท.บ. (ฟิสิกส์) มน. พ.ศ. 2541\\
+\textbf{ความเชี่ยวชาญ} ระบบสมองกลฝังตัว ปัญญาประดิษฐ์และการเรียนรู้เชิงลึก เกษตรฟิสิกส์ดิจิทัล และเซนเซอร์อัจฉริยะ\\
+\textbf{ไปรษณีย์อิเล็กทรอนิกส์} chewa.t@rbru.ac.th
+\end{tcolorbox}
+
+\vspace{4mm}
+
+\begin{tcolorbox}[enhanced, colback=white, colframe=rbruSlate, arc=3mm, boxrule=1pt]
+\textbf{\large อาจารย์ธนพัฒน์ ถิระวุฒิ (Principal Investigator)}\\
+หลักสูตร คบ.ฟิสิกส์ คณะวิทยาศาสตร์และเทคโนโลยี มหาวิทยาลัยราชภัฏรำไพพรรณี\\
+\textbf{คุณวุฒิการศึกษา} วท.ม. (ฟิสิกส์) จุฬาลงกรณ์มหาวิทยาลัย, วท.บ. (ฟิสิกส์) จุฬาลงกรณ์มหาวิทยาลัย\\
+\textbf{ความเชี่ยวชาญ} วัสดุเชิงประกอบ การพัฒนาต้นแบบวิจัย และระบบตรวจวัดทางฟิสิกส์\\
+\textbf{ไปรษณีย์อิเล็กทรอนิกส์} tanapat.t@rbru.ac.th
+\end{tcolorbox}
+
+\vspace{4mm}
+
+\begin{tcolorbox}[enhanced, colback=white, colframe=rbruGreen, arc=3mm, boxrule=1pt]
+\textbf{\large ผู้ช่วยศาสตราจารย์ ดร.นันทพร มูลรังษี (Co-Principal Investigator)}\\
+สาขาวิชาเคมี คณะวิทยาศาสตร์และเทคโนโลยี มหาวิทยาลัยราชภัฏรำไพพรรณี\\
+\textbf{คุณวุฒิการศึกษา} วท.ด. (เคมี) มหาวิทยาลัยเชียงใหม่, วท.บ. (เคมี) มหาวิทยาลัยเชียงใหม่\\
+\textbf{ความเชี่ยวชาญ} เคมีวิเคราะห์ การสร้างเครื่องมือวิเคราะห์ทางเคมีอย่างง่าย และการสอบเทียบมาตรฐาน\\
+\textbf{ไปรษณีย์อิเล็กทรอนิกส์} nuntaporn.m@rbru.ac.th
+\end{tcolorbox}
+
+\end{document}
