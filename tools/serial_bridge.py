@@ -2,19 +2,20 @@
 """
 Project: RBRU Digital Agriphysics & AI Soil pH Monitor
 File: tools/serial_bridge.py
-Description: Background bridge connecting Seeed Studio Wio Terminal USB Serial
-             to the SQLite3 Database & Web Dashboard via REST API with Real-time Clock Sync.
+Description: USB-Serial to HTTP REST Bridge with Time Synchronization and Session Management
 """
 
 import sys
 import time
 import glob
 import re
-import urllib.request
+import os
 import json
+import urllib.request
+import urllib.parse
 import serial
 
-API_ENDPOINT = "http://localhost/06_AI_Research/my_ph_wio/api/post_data.php"
+API_URL = "http://localhost/06_AI_Research/my_ph_wio/api/post_data.php"
 
 def find_wio_port():
     ports = glob.glob('/dev/cu.usbmodem*')
@@ -24,9 +25,10 @@ def find_wio_port():
 
 def send_to_api(payload):
     try:
+        data_bytes = json.dumps(payload).encode('utf-8')
         req = urllib.request.Request(
-            API_ENDPOINT,
-            data=json.dumps(payload).encode('utf-8'),
+            API_URL, 
+            data=data_bytes, 
             headers={'Content-Type': 'application/json'}
         )
         with urllib.request.urlopen(req, timeout=3) as resp:
@@ -36,15 +38,18 @@ def send_to_api(payload):
         print(f"[API ERROR] Failed to send: {e}")
         return False
 
-def parse_line(line):
-    # ตัวอย่าง: Volt:1.6660 Temp:25.0 pH_Trad:7.12 pH_AI:6.91 Target:BUF 7.00 DateTime:2026-09-30 15:02:18
+def parse_line(line, active_session="EXP_001"):
+    # ตัวอย่าง: Volt:1.6660 Temp:25.0 pH_Trad:7.12 pH_AI:6.91 Target:BUF 7.00 DateTime:2026-09-30 15:02:18 Session:EXP_001
     try:
         v_match = re.search(r'Volt:([0-9\.]+)', line)
         t_match = re.search(r'Temp:([0-9\.]+)', line)
         pt_match = re.search(r'pH_Trad:([0-9\.]+)', line)
         pa_match = re.search(r'pH_AI:([0-9\.]+)', line)
         buf_match = re.search(r'Target:([A-Za-z0-9_\. ]+)', line)
-        dt_match = re.search(r'DateTime:([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2})', line)
+        sess_match = re.search(r'Session:([A-Za-z0-9_\-]+)', line)
+        session_val = sess_match.group(1).strip() if sess_match else active_session
+
+        dt_match = re.search(r'DateTime:([0-9\-]+ [0-9:]+)', line)
 
         if v_match and pa_match:
             voltage = float(v_match.group(1))
@@ -55,6 +60,7 @@ def parse_line(line):
             datetime_val = dt_match.group(1).strip() if dt_match else time.strftime('%Y-%m-%d %H:%M:%S')
 
             return {
+                "session_id": session_val,
                 "voltage": voltage,
                 "temp_c": temp_c,
                 "ph_traditional": ph_trad,
@@ -68,7 +74,9 @@ def parse_line(line):
     return None
 
 def main():
-    print("[*] Starting RBRU Soil pH Serial Bridge with Time Sync...")
+    print("[*] Starting RBRU Soil pH Serial Bridge with Time Sync & Session Manager...")
+    
+    cmd_file = os.path.join(os.path.dirname(__file__), '..', 'data', 'bridge_cmd.json')
     
     port = find_wio_port()
     if not port:
@@ -78,6 +86,8 @@ def main():
             port = find_wio_port()
     
     print(f"[*] Found Wio Terminal at {port}. Opening serial connection @ 115200 bps...")
+    
+    active_session = "EXP_001"
     
     while True:
         try:
@@ -92,6 +102,20 @@ def main():
                 last_sync_time = time.time()
                 
                 while True:
+                    # ตรวจสอบว่ามีคำสั่งจาก Web Dashboard หรือไม่
+                    if os.path.exists(cmd_file):
+                        try:
+                            with open(cmd_file, 'r', encoding='utf-8') as f:
+                                cmd_info = json.load(f)
+                            os.remove(cmd_file)
+                            if cmd_info.get('command') == 'START_NEW':
+                                new_sess = cmd_info.get('session_id', '')
+                                active_session = new_sess
+                                ser.write(f"START_NEW:{new_sess}\n".encode('utf-8'))
+                                print(f"\n[BRIDGE CMD] Dispatched START_NEW:{new_sess} to Wio Terminal\n")
+                        except Exception as ce:
+                            print(f"[BRIDGE CMD ERROR] {ce}")
+
                     # ซิงค์เวลาซ้ำทุก 60 วินาที เพื่อป้องกันเวลานาฬิกาคลาดเคลื่อน
                     if time.time() - last_sync_time >= 60.0:
                         last_sync_time = time.time()
@@ -100,7 +124,12 @@ def main():
 
                     raw_line = ser.readline().decode('utf-8', errors='ignore').strip()
                     if raw_line:
-                        data = parse_line(raw_line)
+                        if raw_line.startswith("NEW_SESSION:"):
+                            active_session = raw_line.split(":", 1)[1].strip()
+                            print(f"\n[SESSION NOTIFICATION] Wio Terminal started: {active_session}\n")
+                            continue
+
+                        data = parse_line(raw_line, active_session)
                         if data:
                             now = time.time()
                             # ส่งเข้าฐานข้อมูลทุกๆ 1.5 วินาที
@@ -108,7 +137,7 @@ def main():
                                 last_post_time = now
                                 success = send_to_api(data)
                                 status_tag = "✓ SAVED" if success else "✗ FAIL"
-                                print(f"[{data['datetime']}] {status_tag} | pH_AI: {data['ph_ai']:.2f} | Volt: {data['voltage']:.3f}V | Temp: {data['temp_c']}C | Target: {data['target_buffer']}")
+                                print(f"[{data['datetime']}] {status_tag} | [{data['session_id']}] pH_AI: {data['ph_ai']:.2f} | Volt: {data['voltage']:.3f}V | Temp: {data['temp_c']}C | Target: {data['target_buffer']}")
         except (serial.SerialException, OSError) as e:
             print(f"[!] Serial disconnected: {e}. Reconnecting in 3s...")
             time.sleep(3)

@@ -8,6 +8,7 @@ let phChart = null;
 let isPolling = true;
 let pollTimer = null;
 let lastKnownId = 0;
+let currentSession = '';
 
 const POLL_INTERVAL = 2000; // ทุก 2 วินาที
 
@@ -19,7 +20,52 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event Listeners
     document.getElementById('btnTogglePoll').addEventListener('click', togglePolling);
     document.getElementById('btnSimulate').addEventListener('click', simulateSample);
+
+    const sessionSelect = document.getElementById('sessionSelect');
+    if (sessionSelect) {
+        sessionSelect.addEventListener('change', (e) => {
+            currentSession = e.target.value;
+            updateExportLink();
+            fetchDashboardData();
+        });
+    }
+
+    const btnNewSession = document.getElementById('btnNewSession');
+    if (btnNewSession) {
+        btnNewSession.addEventListener('click', async () => {
+            if (!confirm('ต้องการเริ่มการทดลองและสร้างไฟล์บันทึกเซสชันใหม่ใช่หรือไม่?')) return;
+            try {
+                btnNewSession.disabled = true;
+                btnNewSession.innerText = '⏳ กำลังเริ่ม...';
+                const res = await fetch('api/new_session.php');
+                const result = await res.json();
+                if (result.success) {
+                    currentSession = result.session_id;
+                    updateExportLink();
+                    await fetchDashboardData();
+                    alert(`เริ่มเซสชันใหม่สำเร็จ: ${result.session_id}\n(ระบบจะเริ่มบันทึกไฟล์ใหม่บน MicroSD Card และฐานข้อมูลทันที)`);
+                } else {
+                    alert('เกิดข้อผิดพลาด: ' + (result.error || 'ไม่สามารถเริ่มเซสชันใหม่ได้'));
+                }
+            } catch (err) {
+                alert('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + err.message);
+            } finally {
+                btnNewSession.disabled = false;
+                btnNewSession.innerText = '➕ เริ่มใหม่ (New)';
+            }
+        });
+    }
 });
+
+function updateExportLink() {
+    const btn = document.getElementById('btnExportCsv');
+    if (!btn) return;
+    if (currentSession && currentSession !== 'all') {
+        btn.href = `api/export_csv.php?session_id=${encodeURIComponent(currentSession)}`;
+    } else {
+        btn.href = 'api/export_csv.php';
+    }
+}
 
 // ----------------- Chart.js Initialization -----------------
 function initChart() {
@@ -109,12 +155,17 @@ function initChart() {
 // ----------------- Data Fetching & UI Update -----------------
 async function fetchDashboardData() {
     try {
-        const response = await fetch('api/get_data.php?limit=30');
+        let url = 'api/get_data.php?limit=30';
+        if (currentSession) {
+            url += `&session_id=${encodeURIComponent(currentSession)}`;
+        }
+        const response = await fetch(url);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const result = await response.json();
 
         if (result.success) {
-            updateKPIs(result.latest, result.stats);
+            updateSessionDropdown(result.sessions, result.active_session);
+            updateKPIs(result.latest, result.stats, result.active_session);
             updateSoilBanner(result.latest);
             updateChartData(result.history);
             updateTable(result.history);
@@ -126,7 +177,32 @@ async function fetchDashboardData() {
     }
 }
 
-function updateKPIs(latest, stats) {
+function updateSessionDropdown(sessions, activeSession) {
+    const sel = document.getElementById('sessionSelect');
+    if (!sel || !sessions) return;
+
+    const previousValue = sel.value;
+    const expectedOptionsCount = sessions.length + 2; // default + all
+
+    if (sel.options.length !== expectedOptionsCount) {
+        let html = '<option value="">📁 เซสชันล่าสุด (Latest)</option>';
+        sessions.forEach(s => {
+            const sid = s.session_id;
+            const cnt = s.total_records;
+            html += `<option value="${sid}">🗂️ ${sid} (${cnt} ค่า)</option>`;
+        });
+        html += '<option value="all">📂 ข้อมูลทุกเซสชัน (All Records)</option>';
+        sel.innerHTML = html;
+        if (previousValue) sel.value = previousValue;
+    }
+
+    const sessBadge = document.getElementById('kpiActiveSession');
+    if (sessBadge) {
+        sessBadge.textContent = activeSession || 'EXP_001';
+    }
+}
+
+function updateKPIs(latest, stats, activeSession) {
     if (!latest) return;
 
     // AI Predicted pH
@@ -150,6 +226,12 @@ function updateKPIs(latest, stats) {
     document.getElementById('kpiTotalRows').textContent = stats.total_count;
     document.getElementById('kpiTargetBuf').textContent = latest.target_buffer || 'FIELD';
     document.getElementById('kpiOptimalPercent').textContent = stats.optimal_percentage + '%';
+
+    // Active Session Badge
+    const sessBadge = document.getElementById('kpiActiveSession');
+    if (sessBadge) {
+        sessBadge.textContent = activeSession || latest.session_id || 'EXP_001';
+    }
 
     // Sample Date & Time
     const dtEl = document.getElementById('kpiSampleDateTime');

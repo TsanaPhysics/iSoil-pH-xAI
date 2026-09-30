@@ -2,15 +2,27 @@
 /**
  * Project: RBRU Digital Agriphysics & AI Soil pH Monitor
  * File: api/export_csv.php
- * Description: Export entire database records to downloadable CSV
+ * Description: Export database records to downloadable CSV (supports session filtering)
  */
 
 require_once __DIR__ . '/db.php';
 
+$sessionId = isset($_GET['session_id']) ? trim($_GET['session_id']) : '';
+
 try {
-    $stmt = $db->query("SELECT id, timestamp, voltage, temp_c, ph_traditional, ph_ai, delta_error, target_buffer, soil_status, sample_note FROM measurements ORDER BY id ASC");
-    
-    $filename = "soil_ph_dataset_" . date('Ymd_His') . ".csv";
+    if (!empty($sessionId) && $sessionId !== 'all') {
+        $stmt = $db->prepare("SELECT id, session_id, timestamp, voltage, temp_c, ph_traditional, ph_ai, delta_error, target_buffer, soil_status, sample_note 
+            FROM measurements 
+            WHERE session_id = :session_id 
+            ORDER BY id ASC");
+        $stmt->execute([':session_id' => $sessionId]);
+        $filename = "soil_ph_" . strtolower($sessionId) . "_" . date('Ymd_His') . ".csv";
+    } else {
+        $stmt = $db->query("SELECT id, session_id, timestamp, voltage, temp_c, ph_traditional, ph_ai, delta_error, target_buffer, soil_status, sample_note 
+            FROM measurements 
+            ORDER BY id ASC");
+        $filename = "soil_ph_all_sessions_" . date('Ymd_His') . ".csv";
+    }
     
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename=' . $filename);
@@ -23,6 +35,7 @@ try {
     // เขียนหัวคอลัมน์
     fputcsv($output, [
         'Record_ID',
+        'Session_ID',
         'DateTime',
         'Date',
         'Time',
@@ -42,6 +55,7 @@ try {
         $timeOnly = $parts[1] ?? '';
         fputcsv($output, [
             $row['id'],
+            $row['session_id'] ?? 'EXP_001',
             $row['timestamp'],
             $dateOnly,
             $timeOnly,

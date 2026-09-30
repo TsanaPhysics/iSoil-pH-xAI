@@ -62,12 +62,17 @@ $timestamp = isset($data['datetime']) && !empty($data['datetime'])
     ? trim($data['datetime']) 
     : date('Y-m-d H:i:s');
 
+$session_id = isset($data['session_id']) && !empty($data['session_id']) 
+    ? trim($data['session_id']) 
+    : 'EXP_001';
+
 try {
     $stmt = $db->prepare("INSERT INTO measurements 
-        (timestamp, voltage, temp_c, ph_traditional, ph_ai, delta_error, target_buffer, soil_status, sample_note) 
-        VALUES (:timestamp, :voltage, :temp_c, :ph_traditional, :ph_ai, :delta_error, :target_buffer, :soil_status, :sample_note)");
+        (session_id, timestamp, voltage, temp_c, ph_traditional, ph_ai, delta_error, target_buffer, soil_status, sample_note) 
+        VALUES (:session_id, :timestamp, :voltage, :temp_c, :ph_traditional, :ph_ai, :delta_error, :target_buffer, :soil_status, :sample_note)");
 
     $stmt->execute([
+        ':session_id' => $session_id,
         ':timestamp' => $timestamp,
         ':voltage' => $voltage,
         ':temp_c' => $temp_c,

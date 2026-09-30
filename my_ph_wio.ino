@@ -79,8 +79,10 @@ float calculatePH_Traditional(float voltage, float tempC) {
   return ph;
 }
 
-// ---------------------- ระบบบันทึกชุดข้อมูลวิจัยลง MicroSD Card ----------
-const char* DATASET_FILE = "/soil_ph_dataset.csv";
+// ---------------------- ระบบบันทึกชุดข้อมูลวิจัยลง MicroSD Card (New File per Reset) ----------
+char datasetFile[32] = "/exp_001.csv";
+char sessionName[24] = "EXP_001";
+int sessionNumber = 1;
 bool sdAvailable = false;
 unsigned long logIndex = 0;
 unsigned long lastLogTime = 0;
@@ -161,7 +163,9 @@ void tickClock() {
   }
 }
 
-void parseSerialTime(String cmd) {
+void startNewExperimentSession();
+
+void parseSerialCommand(String cmd) {
   cmd.trim();
   if (cmd.startsWith("TIME:")) {
     String tStr = cmd.substring(5);
@@ -175,8 +179,39 @@ void parseSerialTime(String cmd) {
       expSecond = s;
       lastRtcMillis = millis();
     }
+  } else if (cmd.startsWith("START_NEW") || cmd.startsWith("NEW") || cmd.startsWith("RESET")) {
+    if (cmd.indexOf(':') != -1) {
+      String customSess = cmd.substring(cmd.indexOf(':') + 1);
+      customSess.trim();
+      if (customSess.length() > 0) {
+        int num = 1;
+        if (sscanf(customSess.c_str(), "EXP_%d", &num) == 1) {
+          sessionNumber = num;
+          snprintf(sessionName, sizeof(sessionName), "EXP_%03d", num);
+          snprintf(datasetFile, sizeof(datasetFile), "/exp_%03d.csv", num);
+          if (sdAvailable) {
+            File f = SD.open(datasetFile, FILE_WRITE);
+            if (f) {
+              f.println("Index,DateTime,Voltage_V,Temp_C,pH_Traditional,pH_AI,Standard_Target,Error_Trad,Error_AI,Sample_Type");
+              f.close();
+            }
+          }
+          logIndex = 0;
+          for (int i = 0; i < GRAPH_W; i++) {
+            graphHistoryAI[i] = -1;
+            graphHistoryTrad[i] = -1;
+          }
+          tft.fillRect(GRAPH_X, GRAPH_Y, GRAPH_W, GRAPH_H, TFT_BLACK);
+          drawSDStatus();
+          Serial.print("NEW_SESSION:"); Serial.println(sessionName);
+          return;
+        }
+      }
+    }
+    startNewExperimentSession();
   }
 }
+
 
 String getDateTimeString() {
   char buf[25];
@@ -199,7 +234,7 @@ String getDateString() {
 void logResearchDataRow(float voltage, float tempC, float phTrad, float phAI, const char* note) {
   if (!sdAvailable) return;
 
-  File f = SD.open(DATASET_FILE, FILE_APPEND);
+  File f = SD.open(datasetFile, FILE_APPEND);
   if (f) {
     logIndex++;
     f.print(logIndex);
@@ -230,12 +265,24 @@ void logResearchDataRow(float voltage, float tempC, float phTrad, float phAI, co
 bool initResearchSD() {
   if (SD.begin(SDCARD_SS_PIN, SDCARD_SPI, 4000000UL)) {
     sdAvailable = true;
-    if (!SD.exists(DATASET_FILE)) {
-      File f = SD.open(DATASET_FILE, FILE_WRITE);
-      if (f) {
-        f.println("Index,DateTime,Voltage_V,Temp_C,pH_Traditional,pH_AI,Standard_Target,Error_Trad,Error_AI,Sample_Type");
-        f.close();
+
+    // ตรวจสอบและค้นหาชื่อไฟล์ใหม่ เช่น /exp_001.csv, /exp_002.csv ...
+    for (int i = 1; i <= 999; i++) {
+      char fname[32];
+      snprintf(fname, sizeof(fname), "/exp_%03d.csv", i);
+      if (!SD.exists(fname)) {
+        sessionNumber = i;
+        strncpy(datasetFile, fname, sizeof(datasetFile));
+        snprintf(sessionName, sizeof(sessionName), "EXP_%03d", i);
+        break;
       }
+    }
+
+    // สร้างไฟล์เซสชันใหม่พร้อมเขียนส่วนหัวคอลัมน์
+    File f = SD.open(datasetFile, FILE_WRITE);
+    if (f) {
+      f.println("Index,DateTime,Voltage_V,Temp_C,pH_Traditional,pH_AI,Standard_Target,Error_Trad,Error_AI,Sample_Type");
+      f.close();
     }
     return true;
   }
@@ -255,6 +302,8 @@ void setup() {
   pinMode(WIO_5S_RIGHT, INPUT_PULLUP);
   pinMode(WIO_5S_PRESS, INPUT_PULLUP);
   pinMode(WIO_KEY_A, INPUT_PULLUP);
+  pinMode(WIO_KEY_B, INPUT_PULLUP);
+  pinMode(WIO_KEY_C, INPUT_PULLUP);
 
   tft.begin();
   tft.setRotation(3); // จอแนวนอน 320x240
@@ -263,6 +312,8 @@ void setup() {
   drawBaseUI();
   initResearchSD();
   drawSDStatus();
+
+  Serial.print("NEW_SESSION:"); Serial.println(sessionName);
 
   for (int i = 0; i < GRAPH_W; i++) {
     graphHistoryAI[i] = -1;
@@ -331,16 +382,55 @@ void drawBaseUI() {
 void drawSDStatus() {
   tft.setTextSize(1);
   if (sdAvailable) {
-    tft.fillRoundRect(242, 4, 72, 16, 3, tft.color565(0, 100, 40));
+    tft.fillRoundRect(236, 4, 78, 16, 3, tft.color565(0, 100, 40));
     tft.setTextColor(TFT_WHITE, tft.color565(0, 100, 40));
-    tft.drawString("SD: REC", 248, 8);
-    tft.fillCircle(304, 12, 3, TFT_RED);
+    tft.drawString(String(sessionName), 240, 8);
+    tft.fillCircle(306, 12, 3, TFT_RED);
   } else {
-    tft.fillRoundRect(242, 4, 72, 16, 3, tft.color565(70, 70, 70));
-    tft.setTextColor(TFT_LIGHTGREY, tft.color565(70, 70, 70));
-    tft.drawString("NO CARD", 250, 8);
+    tft.fillRoundRect(236, 4, 78, 16, 3, tft.color565(70, 70, 70));
+    tft.setTextColor(TFT_WHITE, tft.color565(70, 70, 70));
+    tft.drawString(String(sessionName), 240, 8);
   }
 }
+
+void startNewExperimentSession() {
+  if (sdAvailable) {
+    for (int i = sessionNumber + 1; i <= 999; i++) {
+      char fname[32];
+      snprintf(fname, sizeof(fname), "/exp_%03d.csv", i);
+      if (!SD.exists(fname)) {
+        sessionNumber = i;
+        strncpy(datasetFile, fname, sizeof(datasetFile));
+        snprintf(sessionName, sizeof(sessionName), "EXP_%03d", i);
+        break;
+      }
+    }
+    File f = SD.open(datasetFile, FILE_WRITE);
+    if (f) {
+      f.println("Index,DateTime,Voltage_V,Temp_C,pH_Traditional,pH_AI,Standard_Target,Error_Trad,Error_AI,Sample_Type");
+      f.close();
+    }
+  } else {
+    sessionNumber++;
+    snprintf(sessionName, sizeof(sessionName), "EXP_%03d", sessionNumber);
+  }
+
+  logIndex = 0;
+
+  for (int i = 0; i < GRAPH_W; i++) {
+    graphHistoryAI[i] = -1;
+    graphHistoryTrad[i] = -1;
+  }
+  tft.fillRect(GRAPH_X, GRAPH_Y, GRAPH_W, GRAPH_H, TFT_BLACK);
+  int midY = GRAPH_Y + (GRAPH_H / 2);
+  for (int x = GRAPH_X; x < GRAPH_X + GRAPH_W; x += 6) {
+    tft.drawPixel(x, midY, tft.color565(60, 65, 80));
+  }
+
+  drawSDStatus();
+  Serial.print("NEW_SESSION:"); Serial.println(sessionName);
+}
+
 
 // ----------------- อัปเดตการวิเคราะห์สภาพดิน (ขนาดใหญ่ ชัดเจน มีสีสัน) ----------
 void updateSoilStatusLarge(float ph) {
@@ -393,7 +483,7 @@ void loop() {
 
   if (Serial.available()) {
     String cmd = Serial.readStringUntil('\n');
-    parseSerialTime(cmd);
+    parseSerialCommand(cmd);
   }
 
   handleUserControls();
@@ -483,13 +573,14 @@ void loop() {
       logResearchDataRow(voltage, testTempC, phTrad, phAI, "AUTO_SAMPLE");
     }
 
-    // 7. ส่ง Telemetry ออก Serial พร้อม Date-Time
+    // 7. ส่ง Telemetry ออก Serial พร้อม Date-Time และ Session
     Serial.print("Volt:"); Serial.print(voltage, 4);
     Serial.print("\tTemp:"); Serial.print(testTempC, 1);
     Serial.print("\tpH_Trad:"); Serial.print(phTrad, 2);
     Serial.print("\tpH_AI:"); Serial.print(phAI, 2);
     Serial.print("\tTarget:"); Serial.print(BUFFER_NAMES[bufferIndex]);
-    Serial.print("\tDateTime:"); Serial.println(getDateTimeString());
+    Serial.print("\tDateTime:"); Serial.print(getDateTimeString());
+    Serial.print("\tSession:"); Serial.println(sessionName);
   }
 }
 
@@ -512,6 +603,16 @@ void handleUserControls() {
   } else if (digitalRead(WIO_5S_LEFT) == LOW) {
     if (testTempC > 20.0f) testTempC -= 5.0f;
     lastBtnPress = millis();
+  }
+
+  // ปุ่มเริ่มการทดลองและสร้างไฟล์ใหม่ (WIO_KEY_C หรือ WIO_KEY_B ด้านบน)
+  if (digitalRead(WIO_KEY_C) == LOW || digitalRead(WIO_KEY_B) == LOW) {
+    startNewExperimentSession();
+    // เอฟเฟกต์กะพริบขอบจอสีฟ้า Cyan ยืนยันการเริ่มเซสชันใหม่
+    tft.drawRoundRect(6, 28, 186, 86, 4, TFT_CYAN);
+    delay(120);
+    tft.drawRoundRect(6, 28, 186, 86, 4, tft.color565(0, 200, 110));
+    lastBtnPress = millis() + 500;
   }
 
   if (digitalRead(WIO_5S_PRESS) == LOW || digitalRead(WIO_KEY_A) == LOW) {

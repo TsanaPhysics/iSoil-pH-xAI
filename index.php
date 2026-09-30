@@ -36,8 +36,16 @@
                 <span>CONNECTING...</span>
             </div>
             
+            <select id="sessionSelect" class="btn-action" style="background:rgba(15,23,42,0.9); color:#f0f4fc; border:1px solid rgba(0,230,130,0.4); font-weight:600; cursor:pointer;" title="เลือกเซสชันการทดลอง">
+                <option value="">📁 เซสชันล่าสุด (Latest)</option>
+            </select>
+            
+            <button id="btnNewSession" class="btn-action" style="background:rgba(0,230,130,0.15); color:#00e682; border:1px solid rgba(0,230,130,0.5); font-weight:600;" title="เริ่มการทดลองและสร้างไฟล์เซสชันใหม่">
+                ➕ เริ่มใหม่ (New)
+            </button>
+            
             <button id="btnTogglePoll" class="btn-action">⏸ Pause Stream</button>
-            <a href="api/export_csv.php" class="btn-action btn-primary" title="ดาวน์โหลดชุดข้อมูล CSV ทั้งหมด">
+            <a id="btnExportCsv" href="api/export_csv.php" class="btn-action btn-primary" title="ดาวน์โหลดชุดข้อมูล CSV">
                 📥 Export CSV
             </a>
             <button id="btnSimulate" class="btn-action" title="จำลองข้อมูลเพื่อทดสอบหน้าจอ">
@@ -102,7 +110,7 @@
                 <span class="kpi-subtext" style="font-size:1rem; font-weight:700;">Records</span>
             </div>
             <div class="kpi-subtext">
-                📅 ล่าสุด: <strong id="kpiSampleDateTime" style="color:var(--color-cyan);">--</strong> | Target: <strong id="kpiTargetBuf" style="color:#fff;">FIELD</strong>
+                🗂️ เซสชัน: <strong id="kpiActiveSession" style="color:var(--color-gold);">EXP_001</strong> | 📅 ล่าสุด: <strong id="kpiSampleDateTime" style="color:var(--color-cyan);">--</strong>
             </div>
         </div>
 

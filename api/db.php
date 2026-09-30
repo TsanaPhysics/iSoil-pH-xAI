@@ -22,6 +22,7 @@ try {
     // สร้างตารางข้อมูลหากยังไม่มี
     $db->exec("CREATE TABLE IF NOT EXISTS measurements (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT DEFAULT 'EXP_001',
         timestamp DATETIME DEFAULT (datetime('now', 'localtime')),
         voltage REAL NOT NULL,
         temp_c REAL NOT NULL,
@@ -33,7 +34,21 @@ try {
         sample_note TEXT DEFAULT ''
     )");
 
+    // ตรวจสอบและเพิ่มคอลัมน์ session_id สำหรับฐานข้อมูลเดิม
+    $cols = $db->query("PRAGMA table_info(measurements)")->fetchAll();
+    $hasSession = false;
+    foreach ($cols as $c) {
+        if ($c['name'] === 'session_id') {
+            $hasSession = true;
+            break;
+        }
+    }
+    if (!$hasSession) {
+        $db->exec("ALTER TABLE measurements ADD COLUMN session_id TEXT DEFAULT 'EXP_001'");
+    }
+
     $db->exec("CREATE INDEX IF NOT EXISTS idx_timestamp ON measurements(timestamp)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_session ON measurements(session_id)");
 } catch (PDOException $e) {
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
