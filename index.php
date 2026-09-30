@@ -102,7 +102,7 @@
                 <span class="kpi-subtext" style="font-size:1rem; font-weight:700;">Records</span>
             </div>
             <div class="kpi-subtext">
-                Target: <strong id="kpiTargetBuf" style="color:#fff;">FIELD</strong> | Optimal Soil: <strong id="kpiOptimalPercent" style="color:var(--color-green);">--%</strong>
+                📅 ล่าสุด: <strong id="kpiSampleDateTime" style="color:var(--color-cyan);">--</strong> | Target: <strong id="kpiTargetBuf" style="color:#fff;">FIELD</strong>
             </div>
         </div>
 
@@ -158,7 +158,7 @@
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Time</th>
+                            <th>วัน - เวลา (Date & Time)</th>
                             <th>pH (AI)</th>
                             <th>pH (Trad)</th>
                             <th>Volt</th>

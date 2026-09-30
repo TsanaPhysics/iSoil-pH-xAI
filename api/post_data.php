@@ -58,12 +58,17 @@ if ($ph_ai < 5.0) {
     $soil_status = 'SLIGHTLY ACIDIC (5.0 - 5.5)';
 }
 
+$timestamp = isset($data['datetime']) && !empty($data['datetime']) 
+    ? trim($data['datetime']) 
+    : date('Y-m-d H:i:s');
+
 try {
     $stmt = $db->prepare("INSERT INTO measurements 
-        (voltage, temp_c, ph_traditional, ph_ai, delta_error, target_buffer, soil_status, sample_note) 
-        VALUES (:voltage, :temp_c, :ph_traditional, :ph_ai, :delta_error, :target_buffer, :soil_status, :sample_note)");
+        (timestamp, voltage, temp_c, ph_traditional, ph_ai, delta_error, target_buffer, soil_status, sample_note) 
+        VALUES (:timestamp, :voltage, :temp_c, :ph_traditional, :ph_ai, :delta_error, :target_buffer, :soil_status, :sample_note)");
 
     $stmt->execute([
+        ':timestamp' => $timestamp,
         ':voltage' => $voltage,
         ':temp_c' => $temp_c,
         ':ph_traditional' => $ph_traditional,

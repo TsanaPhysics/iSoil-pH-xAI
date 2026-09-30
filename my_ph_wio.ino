@@ -124,6 +124,78 @@ float readFilteredVoltage() {
   return (avgRaw * VREF) / ADC_MAX_VAL;
 }
 
+// ---------------------- ระบบนาฬิกาวันที่และเวลาการทดลอง (RTC Engine) -----------
+int expYear = 2026;
+int expMonth = 9;
+int expDay = 30;
+int expHour = 15;
+int expMinute = 0;
+int expSecond = 0;
+unsigned long lastRtcMillis = 0;
+
+void tickClock() {
+  unsigned long now = millis();
+  while (now - lastRtcMillis >= 1000) {
+    lastRtcMillis += 1000;
+    expSecond++;
+    if (expSecond >= 60) {
+      expSecond = 0;
+      expMinute++;
+      if (expMinute >= 60) {
+        expMinute = 0;
+        expHour++;
+        if (expHour >= 24) {
+          expHour = 0;
+          expDay++;
+          if (expDay > 30) {
+            expDay = 1;
+            expMonth++;
+            if (expMonth > 12) {
+              expMonth = 1;
+              expYear++;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+void parseSerialTime(String cmd) {
+  cmd.trim();
+  if (cmd.startsWith("TIME:")) {
+    String tStr = cmd.substring(5);
+    int y, m, d, h, mi, s;
+    if (sscanf(tStr.c_str(), "%d-%d-%d %d:%d:%d", &y, &m, &d, &h, &mi, &s) == 6) {
+      expYear = y;
+      expMonth = m;
+      expDay = d;
+      expHour = h;
+      expMinute = mi;
+      expSecond = s;
+      lastRtcMillis = millis();
+    }
+  }
+}
+
+String getDateTimeString() {
+  char buf[25];
+  snprintf(buf, sizeof(buf), "%04d-%02d-%02d %02d:%02d:%02d", expYear, expMonth, expDay, expHour, expMinute, expSecond);
+  return String(buf);
+}
+
+String getTimeString() {
+  char buf[10];
+  snprintf(buf, sizeof(buf), "%02d:%02d:%02d", expHour, expMinute, expSecond);
+  return String(buf);
+}
+
+String getDateString() {
+  char buf[12];
+  snprintf(buf, sizeof(buf), "%02d/%02d/%02d", expDay, expMonth, expYear % 100);
+  return String(buf);
+}
+
 void logResearchDataRow(float voltage, float tempC, float phTrad, float phAI, const char* note) {
   if (!sdAvailable) return;
 
@@ -132,7 +204,7 @@ void logResearchDataRow(float voltage, float tempC, float phTrad, float phAI, co
     logIndex++;
     f.print(logIndex);
     f.print(",");
-    f.print(millis());
+    f.print(getDateTimeString());
     f.print(",");
     f.print(voltage, 4);
     f.print(",");
@@ -161,7 +233,7 @@ bool initResearchSD() {
     if (!SD.exists(DATASET_FILE)) {
       File f = SD.open(DATASET_FILE, FILE_WRITE);
       if (f) {
-        f.println("Index,Time_ms,Voltage_V,Temp_C,pH_Traditional,pH_AI,Standard_Target,Error_Trad,Error_AI,Sample_Type");
+        f.println("Index,DateTime,Voltage_V,Temp_C,pH_Traditional,pH_AI,Standard_Target,Error_Trad,Error_AI,Sample_Type");
         f.close();
       }
     }
@@ -230,18 +302,19 @@ void drawBaseUI() {
   tft.setTextColor(tft.color565(160, 185, 215), TFT_BLACK);
   tft.drawString("RAW CELL:", 14, 96);
 
-  // 3. กล่องข้อมูลแบบจำลอง AI และ Traditional (ขวา: X = 196, Y = 28, W = 118, H = 86)
+  // 3. กล่องข้อมูลแบบจำลอง AI และเวลา (ขวา: X = 196, Y = 28, W = 118, H = 86)
   tft.drawRoundRect(196, 28, 118, 86, 4, tft.color565(60, 80, 110));
-  tft.fillRect(197, 29, 116, 16, tft.color565(30, 45, 75));
+  tft.fillRect(197, 29, 116, 15, tft.color565(30, 45, 75));
   tft.setTextColor(tft.color565(255, 210, 50), tft.color565(30, 45, 75));
   tft.setTextSize(1);
-  tft.drawString("AI MODEL PARAMS", 204, 33);
+  tft.drawString("EXP & AI PARAMS", 204, 32);
 
   tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
-  tft.drawString("NERNST :", 202, 50);
-  tft.drawString("TEMP   :", 202, 68);
-  tft.drawString("BUFFER :", 202, 84);
-  tft.drawString("RECS   :", 202, 98);
+  tft.drawString("NERNST :", 202, 47);
+  tft.drawString("TEMP   :", 202, 61);
+  tft.drawString("DATE   :", 202, 75);
+  tft.drawString("TIME   :", 202, 87);
+  tft.drawString("BUFFER :", 202, 99);
 
   // 4. กรอบวิเคราะห์ดินด้านล่าง (เต็มความกว้าง: X = 6, Y = 118, W = 308, H = 42)
   tft.drawRoundRect(6, 118, 308, 42, 4, tft.color565(50, 70, 95));
@@ -249,7 +322,7 @@ void drawBaseUI() {
   // 5. หัวข้อกราฟด้านล่าง
   tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
   tft.setTextSize(1);
-  tft.drawString("TREND : AI(Green) vs Traditional Nernst(Orange)", 10, 166);
+  tft.drawString("TREND: AI vs Nernst", 10, 165);
 
   // กรอบพื้นที่กราฟ (X = 8, Y = 176, W = 304, H = 58)
   tft.drawRoundRect(GRAPH_X - 1, GRAPH_Y - 1, GRAPH_W + 2, GRAPH_H + 2, 3, tft.color565(40, 45, 60));
@@ -316,6 +389,13 @@ void updateSoilStatusLarge(float ph) {
 }
 
 void loop() {
+  tickClock();
+
+  if (Serial.available()) {
+    String cmd = Serial.readStringUntil('\n');
+    parseSerialTime(cmd);
+  }
+
   handleUserControls();
 
   unsigned long currentMillis = millis();
@@ -354,35 +434,47 @@ void loop() {
     dtostrf(voltage, 4, 3, bufVolt);
     tft.drawString(String(bufVolt) + "V", 86, 94);
 
-    // 3. แสดงพารามิเตอร์ของโมเดล AI ในกล่องขวา
-    // Nernst Traditional (TextSize 2, สีส้มสด)
-    tft.fillRect(254, 48, 56, 16, TFT_BLACK);
-    tft.setTextSize(2);
+    // 3. แสดงพารามิเตอร์ของโมเดล AI และวันเวลาในกล่องขวา
+    // Nernst Traditional (TextSize 1, สีส้มสด)
+    tft.fillRect(254, 46, 56, 12, TFT_BLACK);
+    tft.setTextSize(1);
     tft.setTextColor(tft.color565(255, 145, 40), TFT_BLACK);
     char bufTrad[8];
     dtostrf(phTrad, 4, 2, bufTrad);
-    tft.drawString(bufTrad, 254, 48);
+    tft.drawString(bufTrad, 254, 47);
 
     // Temp (TextSize 1)
-    tft.fillRect(254, 68, 56, 12, TFT_BLACK);
-    tft.setTextSize(1);
+    tft.fillRect(254, 60, 56, 12, TFT_BLACK);
     tft.setTextColor(tft.color565(0, 230, 255), TFT_BLACK);
-    tft.drawString(String(testTempC, 1) + " C", 254, 68);
+    tft.drawString(String(testTempC, 1) + " C", 254, 61);
+
+    // Date (TextSize 1, สีทอง)
+    tft.fillRect(254, 74, 56, 11, TFT_BLACK);
+    tft.setTextColor(tft.color565(255, 215, 60), TFT_BLACK);
+    tft.drawString(getDateString(), 254, 75);
+
+    // Time (TextSize 1, สีนีออนเขียว)
+    tft.fillRect(254, 86, 56, 11, TFT_BLACK);
+    tft.setTextColor(tft.color565(0, 255, 140), TFT_BLACK);
+    tft.drawString(getTimeString(), 254, 87);
 
     // Target Buffer
-    tft.fillRect(254, 84, 56, 12, TFT_BLACK);
-    tft.setTextColor(tft.color565(255, 220, 100), TFT_BLACK);
-    tft.drawString(BUFFER_NAMES[bufferIndex], 254, 84);
-
-    // Records Count
     tft.fillRect(254, 98, 56, 12, TFT_BLACK);
-    tft.setTextColor(tft.color565(150, 200, 255), TFT_BLACK);
-    tft.drawString(String(logIndex), 254, 98);
+    tft.setTextColor(tft.color565(180, 215, 255), TFT_BLACK);
+    tft.drawString(BUFFER_NAMES[bufferIndex], 254, 99);
 
     // 4. แสดงผลการวิเคราะห์สภาพดินขนาดใหญ่ (TextSize 2 + 1 หลากสีสัน)
     updateSoilStatusLarge(phAI);
 
-    // 5. วาดกราฟเปรียบเทียบ AI vs Traditional
+    // 5. แสดงหัวข้อกราฟและวันเวลาทดสอบ (Center Sub-Header)
+    tft.fillRect(10, 164, 300, 11, TFT_BLACK);
+    tft.setTextSize(1);
+    tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    tft.drawString("TREND: AI vs Nernst", 10, 165);
+    tft.setTextColor(tft.color565(0, 210, 255), TFT_BLACK);
+    tft.drawString("EXP: " + getDateTimeString(), 156, 165);
+
+    // วาดกราฟเปรียบเทียบ AI vs Traditional
     updateComparisonGraph(phAI, phTrad);
 
     // 6. บันทึกข้อมูลอัตโนมัติลง SD Card
@@ -391,12 +483,13 @@ void loop() {
       logResearchDataRow(voltage, testTempC, phTrad, phAI, "AUTO_SAMPLE");
     }
 
-    // 7. ส่ง Telemetry ออก Serial
+    // 7. ส่ง Telemetry ออก Serial พร้อม Date-Time
     Serial.print("Volt:"); Serial.print(voltage, 4);
     Serial.print("\tTemp:"); Serial.print(testTempC, 1);
     Serial.print("\tpH_Trad:"); Serial.print(phTrad, 2);
     Serial.print("\tpH_AI:"); Serial.print(phAI, 2);
-    Serial.print("\tTarget:"); Serial.println(BUFFER_NAMES[bufferIndex]);
+    Serial.print("\tTarget:"); Serial.print(BUFFER_NAMES[bufferIndex]);
+    Serial.print("\tDateTime:"); Serial.println(getDateTimeString());
   }
 }
 

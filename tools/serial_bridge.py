@@ -3,7 +3,7 @@
 Project: RBRU Digital Agriphysics & AI Soil pH Monitor
 File: tools/serial_bridge.py
 Description: Background bridge connecting Seeed Studio Wio Terminal USB Serial
-             to the SQLite3 Database & Web Dashboard via REST API.
+             to the SQLite3 Database & Web Dashboard via REST API with Real-time Clock Sync.
 """
 
 import sys
@@ -37,13 +37,14 @@ def send_to_api(payload):
         return False
 
 def parse_line(line):
-    # ตัวอย่าง: Volt:1.6660 Temp:25.0 pH_Trad:7.12 pH_AI:6.91 Target:BUF 7.00
+    # ตัวอย่าง: Volt:1.6660 Temp:25.0 pH_Trad:7.12 pH_AI:6.91 Target:BUF 7.00 DateTime:2026-09-30 15:02:18
     try:
         v_match = re.search(r'Volt:([0-9\.]+)', line)
         t_match = re.search(r'Temp:([0-9\.]+)', line)
         pt_match = re.search(r'pH_Trad:([0-9\.]+)', line)
         pa_match = re.search(r'pH_AI:([0-9\.]+)', line)
         buf_match = re.search(r'Target:([A-Za-z0-9_\. ]+)', line)
+        dt_match = re.search(r'DateTime:([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2})', line)
 
         if v_match and pa_match:
             voltage = float(v_match.group(1))
@@ -51,6 +52,7 @@ def parse_line(line):
             ph_trad = float(pt_match.group(1)) if pt_match else float(pa_match.group(1))
             ph_ai = float(pa_match.group(1))
             target = buf_match.group(1).strip() if buf_match else "FIELD"
+            datetime_val = dt_match.group(1).strip() if dt_match else time.strftime('%Y-%m-%d %H:%M:%S')
 
             return {
                 "voltage": voltage,
@@ -58,6 +60,7 @@ def parse_line(line):
                 "ph_traditional": ph_trad,
                 "ph_ai": ph_ai,
                 "target_buffer": target,
+                "datetime": datetime_val,
                 "sample_note": "LIVE_WIO_STREAM"
             }
     except Exception as e:
@@ -65,7 +68,7 @@ def parse_line(line):
     return None
 
 def main():
-    print("[*] Starting RBRU Soil pH Serial Bridge...")
+    print("[*] Starting RBRU Soil pH Serial Bridge with Time Sync...")
     
     port = find_wio_port()
     if not port:
@@ -79,28 +82,40 @@ def main():
     while True:
         try:
             with serial.Serial(port, 115200, timeout=2) as ser:
-                print(f"[+] Connected to {port}! Streaming data to {API_ENDPOINT}...")
+                print(f"[+] Connected to {port}! Syncing date & time and streaming data...")
+                
+                # ส่งคำสั่งซิงค์วันและเวลากับเครื่องคอมพิวเตอร์ทันทีที่เชื่อมต่อ
+                now_str = time.strftime('%Y-%m-%d %H:%M:%S')
+                ser.write(f"TIME:{now_str}\n".encode('utf-8'))
+                
                 last_post_time = 0
+                last_sync_time = time.time()
                 
                 while True:
+                    # ซิงค์เวลาซ้ำทุก 60 วินาที เพื่อป้องกันเวลานาฬิกาคลาดเคลื่อน
+                    if time.time() - last_sync_time >= 60.0:
+                        last_sync_time = time.time()
+                        now_str = time.strftime('%Y-%m-%d %H:%M:%S')
+                        ser.write(f"TIME:{now_str}\n".encode('utf-8'))
+
                     raw_line = ser.readline().decode('utf-8', errors='ignore').strip()
                     if raw_line:
                         data = parse_line(raw_line)
                         if data:
                             now = time.time()
-                            # ส่งเข้าฐานข้อมูลทุกๆ 1.5 วินาที เพื่อไม่ให้แน่นเกินไป
+                            # ส่งเข้าฐานข้อมูลทุกๆ 1.5 วินาที
                             if now - last_post_time >= 1.5:
                                 last_post_time = now
                                 success = send_to_api(data)
                                 status_tag = "✓ SAVED" if success else "✗ FAIL"
-                                print(f"[{time.strftime('%H:%M:%S')}] {status_tag} | pH_AI: {data['ph_ai']:.2f} | Volt: {data['voltage']:.3f}V | Temp: {data['temp_c']}C | Target: {data['target_buffer']}")
+                                print(f"[{data['datetime']}] {status_tag} | pH_AI: {data['ph_ai']:.2f} | Volt: {data['voltage']:.3f}V | Temp: {data['temp_c']}C | Target: {data['target_buffer']}")
         except (serial.SerialException, OSError) as e:
             print(f"[!] Serial disconnected: {e}. Reconnecting in 3s...")
             time.sleep(3)
             port = find_wio_port()
         except KeyboardInterrupt:
-            print("\n[*] Bridge stopped by user.")
-            break
+            print("\n[*] Stopping Serial Bridge.")
+            sys.exit(0)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

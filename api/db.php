@@ -5,6 +5,8 @@
  * Description: SQLite3 Database Connection & Auto-Migration
  */
 
+date_default_timezone_set('Asia/Bangkok');
+
 $dbDir = __DIR__ . '/../data';
 if (!is_dir($dbDir)) {
     mkdir($dbDir, 0777, true);

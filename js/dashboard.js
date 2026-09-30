@@ -150,6 +150,12 @@ function updateKPIs(latest, stats) {
     document.getElementById('kpiTotalRows').textContent = stats.total_count;
     document.getElementById('kpiTargetBuf').textContent = latest.target_buffer || 'FIELD';
     document.getElementById('kpiOptimalPercent').textContent = stats.optimal_percentage + '%';
+
+    // Sample Date & Time
+    const dtEl = document.getElementById('kpiSampleDateTime');
+    if (dtEl && latest.timestamp) {
+        dtEl.textContent = latest.timestamp;
+    }
 }
 
 function updateSoilBanner(latest) {
@@ -184,8 +190,10 @@ function updateChartData(history) {
     if (!phChart || !history || history.length === 0) return;
 
     const labels = history.map(item => {
-        const timePart = item.timestamp.split(' ')[1] || item.timestamp;
-        return timePart.substring(0, 5);
+        const parts = item.timestamp.split(' ');
+        const dateShort = parts[0] ? parts[0].substring(5) : '';
+        const timeShort = parts[1] ? parts[1].substring(0, 5) : '';
+        return `${dateShort} ${timeShort}`;
     });
 
     const aiData = history.map(item => parseFloat(item.ph_ai));
@@ -211,7 +219,7 @@ function updateTable(history) {
         html += `
             <tr class="${highlightClass}">
                 <td>#${item.id}</td>
-                <td>${item.timestamp.split(' ')[1] || item.timestamp}</td>
+                <td><span style="font-family:'JetBrains Mono'; font-weight:600; color:#38bdf8; font-size:0.85rem;">${item.timestamp}</span></td>
                 <td style="color: var(--color-green); font-weight:700;">${Number(item.ph_ai).toFixed(2)}</td>
                 <td style="color: var(--color-orange);">${Number(item.ph_traditional).toFixed(2)}</td>
                 <td>${Number(item.voltage).toFixed(3)} V</td>

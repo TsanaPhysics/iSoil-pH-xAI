@@ -23,7 +23,9 @@ try {
     // เขียนหัวคอลัมน์
     fputcsv($output, [
         'Record_ID',
-        'Timestamp',
+        'DateTime',
+        'Date',
+        'Time',
         'Cell_Potential_V',
         'Temperature_C',
         'pH_Traditional_Nernst',
@@ -35,7 +37,23 @@ try {
     ]);
     
     while ($row = $stmt->fetch()) {
-        fputcsv($output, $row);
+        $parts = explode(' ', $row['timestamp']);
+        $dateOnly = $parts[0] ?? '';
+        $timeOnly = $parts[1] ?? '';
+        fputcsv($output, [
+            $row['id'],
+            $row['timestamp'],
+            $dateOnly,
+            $timeOnly,
+            $row['voltage'],
+            $row['temp_c'],
+            $row['ph_traditional'],
+            $row['ph_ai'],
+            $row['delta_error'],
+            $row['target_buffer'],
+            $row['soil_status'],
+            $row['sample_note']
+        ]);
     }
     
     fclose($output);
