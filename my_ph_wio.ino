@@ -60,10 +60,10 @@ const char* MODEL_NAMES[] = {
   "ANN UNIV"
 };
 const char* MODEL_SHORT_DESCS[] = {
-  "Durian (pH4.5-7)",
-  "Loam Soil",
-  "Clay (Donnan)",
-  "Universal"
+  "Durian",
+  "Loam",
+  "Clay",
+  "Univ"
 };
 
 // โครงสร้างน้ำหนักโครงข่ายประสาทเทียม (ANN 2-4-1 TinyML Architecture)
@@ -262,23 +262,32 @@ float readFilteredVoltage() {
 
 // ---------------------- ระบบอ่านอุณหภูมิจากหัววัด 3-in-1 (ATC Engine) ---------
 float read3in1Temperature() {
+  // ทำการคายประจุ residual voltage บนขา A1 สั้นๆ เพื่อป้องกันพินลอย (Floating crosstalk)
+  pinMode(TEMP_PIN, OUTPUT);
+  digitalWrite(TEMP_PIN, LOW);
+  delayMicroseconds(20);
+  pinMode(TEMP_PIN, INPUT_PULLDOWN);
+  delayMicroseconds(200);
+
   int raw = 0;
   for (int i = 0; i < 10; i++) {
     raw += analogRead(TEMP_PIN);
-    delayMicroseconds(100);
+    delayMicroseconds(50);
   }
   raw /= 10;
 
-  // ตรวจสอบว่ามีการต่อหัววัดอุณหภูมิ 3-in-1 หรือไม่ (แรงดันช่วง 0.2V - 3.1V)
-  if (raw < 150 || raw > 3950) {
+  // หากไม่มีการต่อหัววัด 3-in-1 ขา A1 จะถูกพูลดาวน์อยู่ที่ 0V (raw < 500)
+  if (raw < 800 || raw > 3600) {
     isAutoTempActive = false;
-    return testTempC; // ใช้ค่า MTC ที่ผู้ใช้ปรับด้วยจอยสติ๊ก
+    return testTempC; // ใช้ค่า MTC ที่ผู้ใช้ปรับด้วยจอยสติ๊ก (เช่น 25.0 C)
   }
 
-  isAutoTempActive = true;
   float vOut = ((float)raw * VREF) / (float)ADC_MAX_VAL;
   float rNTC = (10000.0f * vOut) / (VREF - vOut);
-  if (rNTC <= 0.0f) return testTempC;
+  if (rNTC <= 0.0f) {
+    isAutoTempActive = false;
+    return testTempC;
+  }
 
   // สมการ Steinhart-Hart / B-parameter (B=3950, T0=298.15K, R0=10000 ohm)
   float steinhart = rNTC / 10000.0f;
@@ -288,10 +297,12 @@ float read3in1Temperature() {
   steinhart = 1.0f / steinhart;
   float tempVal = steinhart - 273.15f;
 
-  if (tempVal < 0.0f || tempVal > 70.0f) {
+  if (tempVal < 10.0f || tempVal > 50.0f) {
     isAutoTempActive = false;
     return testTempC;
   }
+
+  isAutoTempActive = true;
   return tempVal;
 }
 
@@ -346,7 +357,7 @@ String getTimeString() {
 
 String getDateString() {
   char buf[12];
-  snprintf(buf, sizeof(buf), "%02d/%02d/%02d", expDay, expMonth, expYear % 100);
+  snprintf(buf, sizeof(buf), "%04d-%02d-%02d", expYear, expMonth, expDay);
   return String(buf);
 }
 
@@ -611,25 +622,25 @@ void updateSoilStatusLarge(float ph) {
 
   if (ph < 5.0f) {
     tft.setTextColor(tft.color565(255, 60, 60), TFT_BLACK);
-    tft.drawString("! VERY ACIDIC SOIL", 14, 122);
+    tft.drawString("VERY ACIDIC SOIL", 14, 122);
     tft.setTextSize(1);
     tft.setTextColor(TFT_YELLOW, TFT_BLACK);
     tft.drawString("CRITICAL: Apply Dolomite Lime | Root Poison Al3+", 14, 144);
   } else if (ph >= 5.5f && ph <= 6.5f) {
     tft.setTextColor(tft.color565(0, 255, 140), TFT_BLACK);
-    tft.drawString("* OPTIMAL DURIAN", 14, 122);
+    tft.drawString("OPTIMAL DURIAN", 14, 122);
     tft.setTextSize(1);
     tft.setTextColor(tft.color565(180, 255, 200), TFT_BLACK);
     tft.drawString("EXCELLENT: Ideal Soil Health for Maximum Yield", 14, 144);
   } else if (ph > 6.5f && ph <= 7.5f) {
     tft.setTextColor(tft.color565(0, 210, 255), TFT_BLACK);
-    tft.drawString("= NEUTRAL SOIL", 14, 122);
+    tft.drawString("NEUTRAL SOIL", 14, 122);
     tft.setTextSize(1);
     tft.setTextColor(tft.color565(180, 230, 255), TFT_BLACK);
     tft.drawString("BALANCED: Standard Balanced Nutrients (pH 6.6-7.5)", 14, 144);
   } else {
     tft.setTextColor(tft.color565(255, 100, 220), TFT_BLACK);
-    tft.drawString("^ ALKALINE SOIL", 14, 122);
+    tft.drawString("ALKALINE SOIL", 14, 122);
     tft.setTextSize(1);
     tft.setTextColor(tft.color565(255, 200, 240), TFT_BLACK);
     tft.drawString("CAUTION: Low Zinc/Iron | Add Compost & Organic", 14, 144);
@@ -698,7 +709,7 @@ void updateFieldRunUI(float voltage, float tempC, float phTrad, float phAI, floa
 
   // 3. แสดงพารามิเตอร์ Nernst และเวลาในกล่องขวา
   // NERNST pH (TextSize 1, สีส้ม)
-  tft.fillRect(250, 46, 60, 11, TFT_BLACK);
+  tft.fillRect(250, 46, 62, 11, TFT_BLACK);
   tft.setTextSize(1);
   tft.setTextColor(tft.color565(255, 145, 40), TFT_BLACK);
   char bufTrad[8];
@@ -706,37 +717,48 @@ void updateFieldRunUI(float voltage, float tempC, float phTrad, float phAI, floa
   tft.drawString(bufTrad, 252, 46);
 
   // AI CONFIDENCE (TextSize 1, สีเขียวมรกต)
-  tft.fillRect(250, 57, 60, 11, TFT_BLACK);
+  tft.fillRect(250, 57, 62, 11, TFT_BLACK);
   tft.setTextColor(tft.color565(0, 255, 140), TFT_BLACK);
   char bufConf[10];
   dtostrf(confidence, 4, 1, bufConf);
   tft.drawString(String(bufConf) + "%", 252, 57);
 
-  // TEMP (TextSize 1, สีฟ้า/เขียว แสดงโหมด ATC/MTC)
-  tft.fillRect(250, 69, 60, 11, TFT_BLACK);
+  // TEMP (TextSize 1, แสดงหน่วย C ชัดเจน และแสดงสีเขียวถ้า ATC / สีฟ้าถ้า MTC)
+  tft.fillRect(250, 69, 62, 11, TFT_BLACK);
   tft.setTextColor(isAutoTempActive ? tft.color565(0, 255, 140) : tft.color565(0, 230, 255), TFT_BLACK);
-  tft.drawString(String(tempC, 1) + (isAutoTempActive ? "C ATC" : "C MTC"), 252, 69);
+  tft.drawString(String(tempC, 1) + " C", 252, 69);
 
   // TIME (TextSize 1, สีเหลืองทอง)
-  tft.fillRect(250, 81, 60, 11, TFT_BLACK);
+  tft.fillRect(250, 81, 62, 11, TFT_BLACK);
   tft.setTextColor(tft.color565(255, 215, 60), TFT_BLACK);
   tft.drawString(getTimeString(), 252, 81);
 
-  // MODEL (TextSize 1, สีส้มอ่อน)
-  tft.fillRect(250, 93, 60, 12, TFT_BLACK);
+  // MODEL (TextSize 1, สีส้มอ่อน ไม่ล้นกล่อง)
+  tft.fillRect(250, 93, 62, 12, TFT_BLACK);
   tft.setTextColor(tft.color565(255, 200, 80), TFT_BLACK);
   tft.drawString(MODEL_SHORT_DESCS[activeModelIndex], 252, 93);
 
   // 4. แสดงผลการวินิจฉัยดิน
   updateSoilStatusLarge(phAI);
 
-  // 5. แสดงแถบหัวข้อกราฟและเวลา
-  tft.fillRect(10, 164, 300, 11, TFT_BLACK);
+  // 5. แสดงแถบเปรียบเทียบ AI vs Nernst และวันที่ (ไม่แสดงเวลาซ้ำซ้อน)
+  tft.fillRect(10, 164, 302, 11, TFT_BLACK);
   tft.setTextSize(1);
+  tft.setTextColor(tft.color565(0, 255, 140), TFT_BLACK);
+  tft.drawString("AI:" + String(phAI, 2), 10, 165);
+
   tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  tft.drawString("TREND: AI vs Nernst (" + String(confidence, 1) + "%)", 10, 165);
+  tft.drawString(" vs ", 56, 165);
+
+  tft.setTextColor(tft.color565(255, 145, 40), TFT_BLACK);
+  tft.drawString("Nst:" + String(phTrad, 2), 78, 165);
+
+  float diff = phAI - phTrad;
+  tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  tft.drawString("(" + (diff >= 0 ? String("+") : String("")) + String(diff, 2) + ")", 144, 165);
+
   tft.setTextColor(tft.color565(0, 210, 255), TFT_BLACK);
-  tft.drawString("EXP: " + getDateTimeString(), 168, 165);
+  tft.drawString("EXP: " + getDateString(), 216, 165);
 
   // 6. กราฟเปรียบเทียบ
   updateComparisonGraph(phAI, phTrad);
@@ -1053,7 +1075,7 @@ void setup() {
 
   analogReadResolution(12);
   pinMode(PH_PIN, INPUT);
-  pinMode(TEMP_PIN, INPUT); // สำหรับหัววัดอุณหภูมิ 3-in-1 Combination Probe
+  pinMode(TEMP_PIN, INPUT_PULLDOWN); // สำหรับหัววัดอุณหภูมิ 3-in-1 Combination Probe (ป้องกันพินลอยเมื่อไม่ได้เสียบ)
 
   pinMode(WIO_5S_UP, INPUT_PULLUP);
   pinMode(WIO_5S_DOWN, INPUT_PULLUP);
