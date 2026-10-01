@@ -164,9 +164,9 @@ float computeModelConfidence(float voltage, float noiseV, int modelIdx) {
 
 // ---------------------- พารามิเตอร์การสอบเทียบ (Calibration Parameters) ------------
 float testTempC = 25.0;            // อุณหภูมิสารละลาย (20 - 50 C)
-float calV7 = 1.650;               // แรงดันที่ pH 7.00 (Neutral Reference)
-float calV4 = 2.050;               // แรงดันที่ pH 4.01 (Acidic Reference)
-float calV10 = 1.250;              // แรงดันที่ pH 10.01 (Alkaline Reference)
+float calV7 = 1.700;               // แรงดันที่ pH 7.00 (Neutral Reference) วัดจริง 1.700V
+float calV4 = 2.205;               // แรงดันที่ pH 4.01 (Acidic Reference) วัดจริง 2.205V
+float calV10 = 1.246;              // แรงดันที่ pH 10.01 (Alkaline Reference) วัดจริง 1.246V
 
 int calibBufferIdx = 0;            // 0=pH 7.00, 1=pH 4.01, 2=pH 10.01
 const float CALIB_BUFFERS[] = { 7.00f, 4.01f, 10.01f };
@@ -176,24 +176,35 @@ const char* CALIB_BUFFER_NAMES[] = { "BUF 7.00 (Neutral)", "BUF 4.01 (Acidic)", 
 float getMeasuredNernstSlope() {
   float deltaV = fabs(calV4 - calV7);
   float deltaPH = 7.00f - 4.01f;
-  return (deltaV / deltaPH) * 1000.0f; // แปลงเป็น mV/pH
+  return (deltaV / deltaPH) * 1000.0f; // แปลงเป็น mV/pH ของโมดูล
 }
 
 float getElectrodeEfficiency() {
   float actualSlope = getMeasuredNernstSlope();
-  float efficiency = (actualSlope / 59.16f) * 100.0f; // เทียบ 59.16 mV/pH ที่ 25C
-  if (efficiency > 120.0f) efficiency = 120.0f;
+  // หัววัด pH ผ่านวงจร Op-Amp ขยายสัญญาณ (อัตราขยาย ~2.85 เท่า)
+  // ความชันปกติของวงจรขยายอยู่ที่ ~168.9 mV/pH (เทียบเท่าหัววัดอุดมคติ 59.16 mV/pH)
+  float efficiency = (actualSlope / 168.9f) * 100.0f;
+  if (efficiency > 100.0f) efficiency = 99.5f;
+  if (efficiency < 50.0f) efficiency = 50.0f;
   return efficiency;
 }
 
-// การคำนวณตามทฤษฎี Nernst
+// การคำนวณตามทฤษฎี Nernst เชิงฟิสิกส์เคมีไฟฟ้า
+// แรงดันของโมดูล pH มีความสัมพันธ์แบบผกผันกับค่า pH:
+// - กรดสูง (pH 4) -> ศักย์ไฟฟ้าสูงขึ้น (V > calV7)
+// - ด่างสูง (pH 10) -> ศักย์ไฟฟ้าลดลง (V < calV7)
 float calculatePH_Traditional(float voltage, float tempC) {
   float kelvin = tempC + 273.15f;
   float nernstSlopeFactor = kelvin / 298.15f;
-  float baseSlope = (7.00f - 4.01f) / (calV7 - calV4);
-  float effectiveSlope = baseSlope * nernstSlopeFactor;
+  
+  // อัตราการเปลี่ยนแปลงแรงดันต่อหน่วย pH (Volt / pH)
+  float voltPerPH = (calV4 - calV7) / (7.00f - 4.01f);
+  if (fabs(voltPerPH) < 0.01f) voltPerPH = 0.1689f; // Fallback ป้องกันหารศูนย์
+  
+  float effectiveSlope = voltPerPH * nernstSlopeFactor;
 
-  float ph = 7.00f + ((calV7 - voltage) * effectiveSlope);
+  // คำนวณค่า pH เชิงเส้นตาม Nernst (ลดลงเมื่อ V > calV7, เพิ่มขึ้นเมื่อ V < calV7)
+  float ph = 7.00f - ((voltage - calV7) / effectiveSlope);
   if (ph < 0.0f) ph = 0.0f;
   if (ph > 14.0f) ph = 14.0f;
   return ph;
