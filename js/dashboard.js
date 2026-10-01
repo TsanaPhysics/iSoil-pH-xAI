@@ -224,15 +224,44 @@ function updateKPIs(latest, stats, activeSession) {
     const voltEl = document.getElementById('kpiVoltage');
     if (voltEl && latest.voltage !== undefined) voltEl.textContent = Number(latest.voltage).toFixed(3) + ' V';
     
+    const tempVal = latest.temp_c !== undefined ? Number(latest.temp_c) : 25.0;
+    const tMode = latest.temp_mode || 'MTC';
+
+    // Prominent Solution Temperature KPI
+    const hugeTempEl = document.getElementById('kpiHugeTemp');
+    if (hugeTempEl) hugeTempEl.textContent = tempVal.toFixed(1) + ' °C';
+
     const tempEl = document.getElementById('kpiTemp');
-    if (tempEl && latest.temp_c !== undefined) tempEl.textContent = Number(latest.temp_c).toFixed(1) + ' °C';
+    if (tempEl) tempEl.textContent = tempVal.toFixed(1) + ' °C';
+
+    const tempBadgeEl = document.getElementById('kpiTempBadge');
+    if (tempBadgeEl) {
+        if (tMode === 'ATC') {
+            tempBadgeEl.textContent = '● ATC (3-in-1 Live)';
+            tempBadgeEl.style.background = 'rgba(0,255,140,0.15)';
+            tempBadgeEl.style.color = '#00ff8c';
+            tempBadgeEl.style.borderColor = 'rgba(0,255,140,0.35)';
+        } else {
+            tempBadgeEl.textContent = '● MTC (Manual 25°C)';
+            tempBadgeEl.style.background = 'rgba(56,189,248,0.15)';
+            tempBadgeEl.style.color = '#38bdf8';
+            tempBadgeEl.style.borderColor = 'rgba(56,189,248,0.35)';
+        }
+    }
 
     const tempModeEl = document.getElementById('kpiTempMode');
     if (tempModeEl) {
-        const tMode = latest.temp_mode || 'MTC';
         tempModeEl.textContent = tMode === 'ATC' ? '[ATC 3-in-1]' : '[MTC Manual]';
         tempModeEl.style.background = tMode === 'ATC' ? 'rgba(0,255,140,0.15)' : 'rgba(56,189,248,0.15)';
         tempModeEl.style.color = tMode === 'ATC' ? '#00ff8c' : '#38bdf8';
+    }
+
+    // Dynamic Theoretical Nernstian Slope S(T) = 0.19841 * Kelvin mV/pH
+    const slopeEl = document.getElementById('kpiNernstSlope');
+    if (slopeEl) {
+        const kelvin = tempVal + 273.15;
+        const slopeVal = (0.19841 * kelvin).toFixed(2);
+        slopeEl.textContent = slopeVal + ' mV/pH';
     }
 
     // AI Confidence & RMSE

@@ -181,7 +181,7 @@ body {
 /* ----------------- KPI Cards Grid ----------------- */
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 20px;
   margin-bottom: 24px;
 }
@@ -217,6 +217,7 @@ body {
 
 .card-ai-ph { --card-accent: var(--color-green); }
 .card-trad-ph { --card-accent: var(--color-orange); }
+.card-temp { --card-accent: #ff6b81; }
 .card-sensor { --card-accent: var(--color-cyan); }
 .card-stats { --card-accent: var(--color-gold); }
 

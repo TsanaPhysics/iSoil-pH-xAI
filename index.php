@@ -99,21 +99,38 @@
             <div class="kpi-subtext">First-Principles Electrochemical Physical Model</div>
         </div>
 
-        <!-- Card 3: Cell Potential & Temperature -->
+        <!-- Card 3: Solution Temperature (ATC/MTC) -->
+        <div class="kpi-card card-temp">
+            <div class="kpi-header">
+                <span class="kpi-title">Solution Temp (ATC / MTC)</span>
+                <span class="kpi-icon">🌡️</span>
+            </div>
+            <div class="kpi-value-row">
+                <span id="kpiHugeTemp" class="kpi-huge-number" style="color: #ff6b81; text-shadow:none;">25.0 °C</span>
+                <span id="kpiTempBadge" class="kpi-delta-tag" style="background:rgba(56,189,248,0.15); color:#38bdf8; border-color:rgba(56,189,248,0.3);">[MTC Manual]</span>
+            </div>
+            <div class="kpi-subtext">
+                Nernstian Slope: <strong id="kpiNernstSlope" style="color:#ffd232;">59.16 mV/pH</strong> | Probe: <strong id="kpiProbeType" style="color:#fff;">Dual 3-in-1</strong>
+            </div>
+        </div>
+
+        <!-- Card 4: Cell Potential -->
         <div class="kpi-card card-sensor">
             <div class="kpi-header">
-                <span class="kpi-title">Cell Potential & Temp</span>
+                <span class="kpi-title">Electrochemical Potential</span>
                 <span class="kpi-icon">⚡</span>
             </div>
             <div class="kpi-value-row">
                 <span id="kpiVoltage" class="kpi-huge-number" style="font-size: 2.2rem; color: var(--color-cyan); text-shadow:none;">-.--- V</span>
+                <span id="kpiTemp" style="display:none;">25.0 °C</span>
+                <span id="kpiTempMode" style="display:none;">[MTC]</span>
             </div>
             <div class="kpi-subtext">
-                Temp: <strong id="kpiTemp" style="color:#fff;">--.- °C</strong> <span id="kpiTempMode" style="font-size:0.75rem; color:#38bdf8; font-weight:700; background:rgba(56,189,248,0.15); padding:1px 6px; border-radius:3px;">[MTC]</span>
+                Raw Cell Voltage | Glass Electrode Input
             </div>
         </div>
 
-        <!-- Card 4: Research Dataset & Target Buffer -->
+        <!-- Card 5: Research Dataset & Target Buffer -->
         <div class="kpi-card card-stats">
             <div class="kpi-header">
                 <span class="kpi-title">Research Dataset Stats</span>
