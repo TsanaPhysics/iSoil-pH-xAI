@@ -280,16 +280,21 @@ float readFilteredVoltage() {
   return (avgRaw * VREF) / ADC_MAX_VAL;
 }
 
-// ---------------------- ระบบอ่านอุณหภูมิอัจฉริยะ (DS18B20 1-Wire & NTC ATC Engine) ---------
+// ---------------------- ระบบอ่านอุณหภูมิอัจฉริยะ (DS18B20 1-Wire & MTC Engine) ---------
 float read3in1Temperature() {
   unsigned long now = millis();
 
-  // 1. ตรวจสอบและอ่านจากเซ็นเซอร์ดิจิทัล DS18B20 ทุกๆ 800ms (Non-blocking)
+  // ตรวจสอบและอ่านจากเซ็นเซอร์ดิจิทัล DS18B20 ทุกๆ 800ms
   if (now - lastDSReadTime >= 800) {
     lastDSReadTime = now;
+    
+    // ช่วยประคองสัญญาณ 1-Wire ด้วย Internal Pull-up ของ SAMD51
+    pinMode(TEMP_PIN, INPUT_PULLUP);
+    
     float t = dsSensors.getTempCByIndex(0);
     dsSensors.requestTemperatures(); // ส่งคำสั่งแปลงค่าล่วงหน้าสำหรับรอบถัดไป
-    if (t > -20.0f && t < 75.0f && t != DEVICE_DISCONNECTED_C) {
+    
+    if (t > -10.0f && t < 70.0f && t != DEVICE_DISCONNECTED_C && t != 85.0f) {
       ds18b20Detected = true;
       cachedDSTemp = t;
     } else {
@@ -297,54 +302,15 @@ float read3in1Temperature() {
     }
   }
 
-  // หากตรวจพบและอ่านค่าจาก DS18B20 ได้สำเร็จ ให้ใช้ค่าดิจิทัลนี้ทันที
-  if (ds18b20Detected && cachedDSTemp > -20.0f && cachedDSTemp < 75.0f) {
+  // หากตรวจพบและอ่านค่าจาก DS18B20 ได้สำเร็จ ให้ใช้ค่าดิจิทัลสด (ATC)
+  if (ds18b20Detected && cachedDSTemp > -10.0f && cachedDSTemp < 70.0f) {
     isAutoTempActive = true;
     return cachedDSTemp;
   }
 
-  // 2. หากไม่ใช่ DS18B20 ให้ตรวจสอบว่ามีการต่อหัววัดแบบ Analog NTC 10K หรือไม่
-  pinMode(TEMP_PIN, OUTPUT);
-  digitalWrite(TEMP_PIN, LOW);
-  delayMicroseconds(20);
-  pinMode(TEMP_PIN, INPUT_PULLDOWN);
-  delayMicroseconds(200);
-
-  int raw = 0;
-  for (int i = 0; i < 10; i++) {
-    raw += analogRead(TEMP_PIN);
-    delayMicroseconds(50);
-  }
-  raw /= 10;
-
-  // หากไม่มีการต่อหัววัดใดๆ ขา A1 จะถูกพูลดาวน์อยู่ที่ 0V
-  if (raw < 800 || raw > 3600) {
-    isAutoTempActive = false;
-    return testTempC; // ใช้ค่า MTC ที่ผู้ใช้ปรับด้วยจอยสติ๊ก (เช่น 25.0 C)
-  }
-
-  float vOut = ((float)raw * VREF) / (float)ADC_MAX_VAL;
-  float rNTC = (10000.0f * vOut) / (VREF - vOut);
-  if (rNTC <= 0.0f) {
-    isAutoTempActive = false;
-    return testTempC;
-  }
-
-  // สมการ Steinhart-Hart / B-parameter (B=3950, T0=298.15K, R0=10000 ohm)
-  float steinhart = rNTC / 10000.0f;
-  steinhart = log(steinhart);
-  steinhart /= 3950.0f;
-  steinhart += 1.0f / (25.0f + 273.15f);
-  steinhart = 1.0f / steinhart;
-  float tempVal = steinhart - 273.15f;
-
-  if (tempVal < 10.0f || tempVal > 50.0f) {
-    isAutoTempActive = false;
-    return testTempC;
-  }
-
-  isAutoTempActive = true;
-  return tempVal;
+  // หากยังไม่พบเซ็นเซอร์ดิจิทัล ให้ใช้ค่ามาตรฐาน MTC (25.0 C) เพื่อไม่ให้ค่า pH แกว่งผิดปกติ
+  isAutoTempActive = false;
+  return testTempC;
 }
 
 // ---------------------- ระบบนาฬิกาวันที่และเวลาการทดลอง (RTC Engine) -----------
